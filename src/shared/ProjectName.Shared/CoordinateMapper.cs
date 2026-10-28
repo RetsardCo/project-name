@@ -17,6 +17,16 @@ namespace ProjectName.Shared.Protocol
     public static class CoordinateMapper
     {
         /// <summary>
+        /// Clamps normalized coordinates to the valid [0.0, 1.0] range, safely handling NaN and infinity.
+        /// </summary>
+        public static (double X, double Y) ClampNormalized(double xNorm, double yNorm)
+        {
+            double clampedX = double.IsNaN(xNorm) || double.IsInfinity(xNorm) ? 0.0 : Math.Clamp(xNorm, 0.0, 1.0);
+            double clampedY = double.IsNaN(yNorm) || double.IsInfinity(yNorm) ? 0.0 : Math.Clamp(yNorm, 0.0, 1.0);
+            return (clampedX, clampedY);
+        }
+
+        /// <summary>
         /// Maps normalized coordinates [0.0, 1.0] from a controller viewport to physical target screen pixels [0, width-1], [0, height-1].
         /// </summary>
         public static PixelPoint MapNormalizedToPixel(

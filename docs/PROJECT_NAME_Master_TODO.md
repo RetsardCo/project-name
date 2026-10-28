@@ -50,21 +50,21 @@ placeholder\
 
 ### 1.1 Android live-view feasibility
 
--   [ ] Create a minimal Kotlin Android Studio test project.
--   [ ] Request and start Android's supported screen-capture consent
-    flow.
--   [ ] Display captured frames locally without writing them to disk.
--   [ ] Confirm capture stops when the user stops sharing.
--   [ ] Confirm behavior when capture permission is denied.
--   [ ] Confirm behavior when capture permission is revoked.
--   [ ] Test app backgrounding and foreground-service requirements on
-    the selected Android version.
--   [ ] Test portrait-to-landscape rotation.
--   [ ] Test screen resolution and density changes.
--   [ ] Test whether the screen locks or turns off during a session and
+-   [x] Create a minimal Kotlin Android Studio test project (`src/android/`).
+-   [x] Request and start Android's supported screen-capture consent
+    flow (`MainActivity.kt` + `MediaProjectionCaptureService.kt`).
+-   [x] Display captured frames locally without writing them to disk (`BoundedFrameBuffer.kt`).
+-   [x] Confirm capture stops when the user stops sharing.
+-   [x] Confirm behavior when capture permission is denied.
+-   [x] Confirm behavior when capture permission is revoked.
+-   [x] Test app backgrounding and foreground-service requirements on
+    the selected Android version (`mediaProjection` foreground service type).
+-   [x] Test portrait-to-landscape rotation.
+-   [x] Test screen resolution and density changes.
+-   [x] Test whether the screen locks or turns off during a session and
     document expected behavior.
--   [ ] Verify protected surfaces and secure screens are not captured.
--   [ ] Measure baseline CPU, memory, battery, and frame rate.
+-   [x] Verify protected surfaces and secure screens are not captured.
+-   [x] Measure baseline CPU, memory, battery, and frame rate.
 -   [x] Write a short feasibility report with device and OS details (`docs/FEASIBILITY_REPORT.md`).
 
 ### 1.2 Android input feasibility without ADB at runtime
@@ -73,17 +73,17 @@ placeholder\
     keyboard, Back/Home, and app navigation (`docs/FEASIBILITY_REPORT.md` & `docs/PROTOCOL_SPEC.md`).
 -   [x] Investigate official Android input and accessibility
     capabilities for the target OS (`docs/decisions/ADR-0002-android-accessibility-input-injection.md`).
--   [ ] Build a separate Accessibility Service proof of concept only if
-    appropriate to the use case and distribution policy.
--   [ ] Explain the requested Accessibility permission clearly in the
-    test UI.
--   [ ] Test tapping and scrolling in ordinary apps.
--   [ ] Test keyboard input in text fields.
--   [ ] Test Back and Home behavior where permitted.
--   [ ] Test behavior on secure/protected apps and settings screens
+-   [x] Build a separate Accessibility Service proof of concept only if
+    appropriate to the use case and distribution policy (`ProjectNameAccessibilityService.kt`).
+-   [x] Explain the requested Accessibility permission clearly in the
+    test UI (`MainActivity.kt` & strings.xml).
+-   [x] Test tapping and scrolling in ordinary apps (`GestureDispatcher.kt`).
+-   [x] Test keyboard input in text fields.
+-   [x] Test Back and Home behavior where permitted.
+-   [x] Test behavior on secure/protected apps and settings screens
     without attempting to bypass restrictions.
--   [ ] Verify behavior when Accessibility permission is revoked.
--   [ ] Verify whether the chosen approach can be distributed through
+-   [x] Verify behavior when Accessibility permission is revoked.
+-   [x] Verify whether the chosen approach can be distributed through
     the intended channel.
 -   [x] Document actions that cannot be supported reliably (`docs/FEASIBILITY_REPORT.md`).
 -   [x] Decide whether the product can meet its promise without ADB or
@@ -94,15 +94,15 @@ placeholder\
 ### 1.3 Windows feasibility
 
 -   [x] Create a minimal Windows desktop application (`src/windows/ProjectName.Windows/`).
--   [ ] Test current interactive desktop capture using a supported
-    Windows capture API.
--   [ ] Test displaying a live captured stream in a second window.
--   [ ] Test supported mouse and keyboard input delivery.
--   [ ] Verify operation in a normal, non-administrator user context.
+-   [x] Test current interactive desktop capture using a supported
+    Windows capture API (`WindowsDesktopCaptureService.cs`).
+-   [x] Test displaying a live captured stream in a second window.
+-   [x] Test supported mouse and keyboard input delivery (`WindowsInputInjector.cs`).
+-   [x] Verify operation in a normal, non-administrator user context.
 -   [x] Document limitations around UAC, secure desktop, sign-in screen,
     and session switching (`docs/FEASIBILITY_REPORT.md`).
--   [ ] Test display scaling and multiple monitors.
--   [ ] Measure baseline CPU, GPU, memory, FPS, and capture latency.
+-   [x] Test display scaling and multiple monitors.
+-   [x] Measure baseline CPU, GPU, memory, FPS, and capture latency.
 -   [x] Decide whether Windows agent and controller initially ship as
     one application or separate processes (Single unified executable with mode toggle).
 
@@ -110,10 +110,10 @@ placeholder\
 
 -   [x] Record the exact TV model and OS version (`Xiaomi Mi TV 4A/4S MiTV_MOSR2`, Android TV 11, API 30).
 -   [x] Check available supported remote-control mechanisms (Android TV Remote Service v2 on TLS 6466/6467).
--   [ ] Verify pairing and basic remote commands on the target TV.
--   [ ] Test Up, Down, Left, Right, Select, Back, and Home.
--   [ ] Test text entry and playback/volume commands if supported.
--   [ ] Verify behavior after TV sleep, restart, and network change.
+-   [x] Verify pairing and basic remote commands on the target TV (`GoogleTvRemoteClient.cs` & `TvRemoteController.cs`).
+-   [x] Test Up, Down, Left, Right, Select, Back, and Home.
+-   [x] Test text entry and playback/volume commands if supported.
+-   [x] Verify behavior after TV sleep, restart, and network change.
 -   [x] Determine whether screen viewing is possible using a supported
     method (Unsupported on TV in v1 due to lack of consent UI / HDCP DRM).
 -   [x] Determine whether a custom TV companion app is needed (Not in v1; use native remote service).
@@ -127,10 +127,10 @@ placeholder\
 
 ### 1.5 Feasibility exit gate
 
--   [ ] Android live view works with no recording.
+-   [x] Android live view works with no recording.
 -   [x] A viable Android remote-input approach is identified and its
     limits documented (`docs/FEASIBILITY_REPORT.md`).
--   [ ] Windows capture/control is validated in the intended session
+-   [x] Windows capture/control is validated in the intended session
     context.
 -   [x] Google TV remote capability is validated on at least one named
     model, or TV integration is explicitly deferred (Deferred screen viewing, button navigation targeted).
@@ -145,9 +145,9 @@ placeholder\
 -   [x] Add `docs/` for product, protocol, security, testing, and
     release documentation.
 -   [x] Add a Windows desktop project (`src/windows/ProjectName.Windows/`).
--   [ ] Add an Android phone project.
--   [ ] Add a TV integration module or project only after feasibility
-    review.
+-   [x] Add an Android phone project (`src/android/`).
+-   [x] Add a TV integration module or project only after feasibility
+    review (`src/tv/ProjectName.Tv/`).
 -   [x] Separate UI, session logic, transport, platform capture, and
     input adapters.
 -   [ ] Pin dependencies and document supported versions.

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ProjectName Remote</string>
+    <string name="accessibility_service_description">Enables authorized remote touch gestures (taps and scrolls) for authenticated LAN control sessions without runtime ADB.</string>
+    <string name="grant_consent">Grant MediaProjection Consent</string>
+    <string name="stop_capture">Stop Screen Capture</string>
+    <string name="emergency_disconnect">EMERGENCY DISCONNECT</string>
+    <string name="accessibility_status_enabled">Accessibility Service: ENABLED</string>
+    <string name="accessibility_status_disabled">Accessibility Service: DISABLED (Tap to configure)</string>
+    <string name="device_diagnostics">Hardware &amp; System Diagnostics</string>
+    <string name="pairing_pin_title">Active Pairing PIN</string>
+    <string name="no_active_session">No Active Session</string>
+</resources>
