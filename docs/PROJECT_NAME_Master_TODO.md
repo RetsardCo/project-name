@@ -16,35 +16,35 @@ placeholder\
 
 ## 0. Project Governance and Scope
 
--   [ ] Keep the product name undecided until naming and availability
-    checks are completed.
--   [ ] Create a repository and define branch/commit conventions.
--   [ ] Add a README with project purpose, scope, current status, and
-    links to the specification.
--   [ ] Add a LICENSE after choosing the intended distribution model.
--   [ ] Add a security reporting contact/process before public
-    distribution.
--   [ ] Define issue labels: `platform`, `security`, `performance`,
-    `bug`, `docs`, `blocked`.
--   [ ] Define a decision log for architecture and platform decisions.
--   [ ] Keep the full product specification and this TODO list in
-    version control.
--   [ ] Confirm the first supported Windows version.
--   [ ] Confirm the Android minimum SDK and target SDK.
--   [ ] Record the Android phone make/model and OS version used for
-    baseline testing.
--   [ ] Record the Google TV make/model, Android TV/Google TV version,
-    and available developer settings.
--   [ ] Define the first release as LAN-only.
--   [ ] Explicitly exclude locked-screen Android control from the first
-    release.
--   [ ] Explicitly exclude recording, replay, and automatic screenshot
-    storage.
--   [ ] Explicitly exclude hidden monitoring and unauthorized access.
--   [ ] Explicitly state that ADB is not a runtime requirement.
--   [ ] Define the one-controller-at-a-time policy for v1.
--   [ ] Define which capabilities are required for the first usable
-    release.
+-   [x] Keep the product name undecided until naming and availability
+    checks are completed (Universal placeholder `[PROJECT_NAME]`).
+-   [x] Create a repository and define branch/commit conventions (`main`, `feature/*`, Conventional Commits in `CONTRIBUTING.md`).
+-   [x] Add a README with project purpose, scope, current status, and
+    links to the specification (`README.md`).
+-   [x] Add a LICENSE after choosing the intended distribution model (`LICENSE` - MIT License).
+-   [x] Add a security reporting contact/process before public
+    distribution (`SECURITY.md`).
+-   [x] Define issue labels: `platform`, `security`, `performance`,
+    `bug`, `docs`, `blocked` (Created on GitHub repo).
+-   [x] Define a decision log for architecture and platform decisions (`docs/decisions/ADR-0001-baseline-architecture-and-governance.md`).
+-   [x] Keep the full product specification and this TODO list in
+    version control (`docs/PROJECT_NAME_Project_Documentation.md` and `docs/PROJECT_NAME_Master_TODO.md`).
+-   [x] Confirm the first supported Windows version (Windows 11 Build 26200+ confirmed on host).
+-   [x] Confirm the Android minimum SDK and target SDK (Min SDK: 28, Target SDK: 34).
+-   [x] Record the Android phone make/model and OS version used for
+    baseline testing (Xiaomi Redmi Note 10 `M2101K7AG`, Android 12, API 31).
+-   [x] Record the Google TV make/model, Android TV/Google TV version,
+    and available developer settings (Xiaomi Mi TV `MiTV_MOSR2`, Android TV 11, API 30 at `192.168.254.104`).
+-   [x] Define the first release as LAN-only (Direct subnet discovery and encrypted session, no cloud dependency).
+-   [x] Explicitly exclude locked-screen Android control from the first
+    release (Active unlocked user sessions only).
+-   [x] Explicitly exclude recording, replay, and automatic screenshot
+    storage (In-memory bounded frame buffers only, discarded on render/transmit).
+-   [x] Explicitly exclude hidden monitoring and unauthorized access (Consent prompts, active indicators, local instant disconnect).
+-   [x] Explicitly state that ADB is not a runtime requirement (Standard platform APIs only: MediaProjection & Accessibility).
+-   [x] Define the one-controller-at-a-time policy for v1 (Single active controller per endpoint).
+-   [x] Define which capabilities are required for the first usable
+    release (LAN discovery, pairing, Android->Windows live view, Windows->Android control, Google TV remote navigation).
 
 ## 1. Phase 0 --- Feasibility and Compatibility Audit
 
