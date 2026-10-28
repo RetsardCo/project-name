@@ -54,6 +54,7 @@ namespace ProjectName.Shared.Transport
         Task StartAsync(CancellationToken cancellationToken = default);
         Task StopAsync();
         Task SendEnvelopeAsync(ProtocolEnvelope envelope, CancellationToken cancellationToken = default);
+        Task<ProtocolEnvelope> SendMessageAsync(string type, object? payload, CancellationToken cancellationToken = default);
         Task DisconnectCurrentClientAsync(string reason);
     }
 }

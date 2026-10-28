@@ -160,7 +160,7 @@ namespace ProjectName.Shared.Transport
         {
             EndPoint? remoteEndPoint = null;
             SslStream? sslStream = null;
-
+            string disconnectReason = "Client session terminated.";
             try
             {
                 remoteEndPoint = client.Client.RemoteEndPoint;
@@ -193,6 +193,7 @@ namespace ProjectName.Shared.Transport
                     if (rawJson == null)
                     {
                         // Clean peer disconnect
+                        disconnectReason = "Client disconnected cleanly.";
                         break;
                     }
 
@@ -206,6 +207,7 @@ namespace ProjectName.Shared.Transport
                             new { error = "VALIDATION_FAILED", detail = validation.Error },
                             Interlocked.Increment(ref _outboundSequence));
                         await SendEnvelopeInternalAsync(sslStream, errorEnvelope, CancellationToken.None).ConfigureAwait(false);
+                        disconnectReason = $"Validation failed: {validation.Error}";
                         break;
                     }
 
@@ -217,6 +219,7 @@ namespace ProjectName.Shared.Transport
                             new { error = "REPLAY_REJECTED", detail = seqError },
                             Interlocked.Increment(ref _outboundSequence));
                         await SendEnvelopeInternalAsync(sslStream, errorEnvelope, CancellationToken.None).ConfigureAwait(false);
+                        disconnectReason = $"Replay rejected: {seqError}";
                         break;
                     }
 
@@ -226,13 +229,11 @@ namespace ProjectName.Shared.Transport
             }
             catch (Exception ex)
             {
-                // Disconnect triggered by error or network drop
-                ClientDisconnected?.Invoke(this, new PeerConnectionEventArgs(remoteEndPoint, ex.Message));
-                return;
+                disconnectReason = ex.Message;
             }
             finally
             {
-                await CleanupCurrentClientAsync(remoteEndPoint, "Client session terminated.").ConfigureAwait(false);
+                await CleanupCurrentClientAsync(remoteEndPoint, disconnectReason).ConfigureAwait(false);
             }
         }
 
@@ -240,11 +241,16 @@ namespace ProjectName.Shared.Transport
         {
             TcpClient? clientToClose;
             SslStream? streamToClose;
+            bool wasConnected = false;
 
             lock (_stateLock)
             {
                 clientToClose = _currentClient;
                 streamToClose = _currentSslStream;
+                if (clientToClose != null || streamToClose != null)
+                {
+                    wasConnected = true;
+                }
                 _currentClient = null;
                 _currentSslStream = null;
             }
@@ -258,7 +264,10 @@ namespace ProjectName.Shared.Transport
                 try { clientToClose.Dispose(); } catch { }
             }
 
-            ClientDisconnected?.Invoke(this, new PeerConnectionEventArgs(remoteEndPoint, reason));
+            if (wasConnected)
+            {
+                ClientDisconnected?.Invoke(this, new PeerConnectionEventArgs(remoteEndPoint, reason));
+            }
         }
 
         public async Task SendEnvelopeAsync(ProtocolEnvelope envelope, CancellationToken cancellationToken = default)
@@ -276,7 +285,21 @@ namespace ProjectName.Shared.Transport
                 throw new InvalidOperationException("Cannot send message: no active client connection.");
             }
 
+            // Ensure outbound envelope carries a valid monotonically increasing sequence number
+            if (envelope.SequenceNumber <= 0)
+            {
+                envelope.SequenceNumber = Interlocked.Increment(ref _outboundSequence);
+            }
+
             await SendEnvelopeInternalAsync(stream, envelope, cancellationToken).ConfigureAwait(false);
+        }
+
+        public async Task<ProtocolEnvelope> SendMessageAsync(string type, object? payload, CancellationToken cancellationToken = default)
+        {
+            long seq = Interlocked.Increment(ref _outboundSequence);
+            var envelope = ProtocolEnvelope.Create(type, payload, seq);
+            await SendEnvelopeAsync(envelope, cancellationToken).ConfigureAwait(false);
+            return envelope;
         }
 
         private async Task SendEnvelopeInternalAsync(SslStream stream, ProtocolEnvelope envelope, CancellationToken cancellationToken)

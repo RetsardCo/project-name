@@ -230,6 +230,11 @@ namespace ProjectName.Shared.Tv
                 ConnectedHost = null;
             }
 
+            if (tcp == null && ssl == null)
+            {
+                return;
+            }
+
             if (ssl != null)
             {
                 try { await ssl.DisposeAsync().ConfigureAwait(false); } catch { }

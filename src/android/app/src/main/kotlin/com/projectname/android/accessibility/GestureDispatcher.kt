@@ -24,6 +24,7 @@ object GestureDispatcher {
 
         val path = Path().apply {
             moveTo(px.toFloat(), py.toFloat())
+            lineTo(px.toFloat(), py.toFloat())
         }
 
         val stroke = GestureDescription.StrokeDescription(path, 0L, durationMs.coerceAtLeast(10L))

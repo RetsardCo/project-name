@@ -46,14 +46,16 @@ class ControllerActivity : AppCompatActivity() {
             v.performClick()
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    val mappedEvents = touchMapper.onTouchDown(event.x, event.y)
-                    // In active network session, mappedEvents are serialized and sent over TLS control channel
+                    // Map touch down to pointer move + click
+                    touchMapper.onTouchDown(event.x, event.y)
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    val moveEvent = touchMapper.onTouchMove(event.x, event.y)
+                    // Map touch move
+                    touchMapper.onTouchMove(event.x, event.y)
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    val upEvent = touchMapper.onTouchUp(event.x, event.y)
+                    // Map touch release
+                    touchMapper.onTouchUp(event.x, event.y)
                 }
             }
             true

@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using ProjectName.Shared.Media;
 using ProjectName.Shared.Protocol;
 using ProjectName.Shared.Protocol.Payloads;
 using ProjectName.Shared.Transport;
@@ -52,16 +54,26 @@ namespace ProjectName.Shared.Session
         public string? ActiveSessionId { get; private set; }
         public string? ActivePeerDeviceId { get; private set; }
         public string? ActiveScope { get; private set; }
+        public DiscoveryPayload LocalDevicePayload { get; set; }
 
         public event EventHandler<PairingChallengeEventArgs>? PairingChallengePresented;
         public event EventHandler<string>? SessionStarted;
         public event EventHandler<string>? SessionStopped;
         public event EventHandler<ProtocolEnvelope>? AuthorizedInputReceived;
+        public event EventHandler<ProtocolEnvelope>? SignalingMessageReceived;
 
-        public SessionCoordinator(ITlsControlServer controlServer, PairingManager? pairingManager = null)
+        public SessionCoordinator(ITlsControlServer controlServer, PairingManager? pairingManager = null, DiscoveryPayload? localPayload = null)
         {
             _controlServer = controlServer ?? throw new ArgumentNullException(nameof(controlServer));
             _pairingManager = pairingManager ?? new PairingManager();
+            LocalDevicePayload = localPayload ?? new DiscoveryPayload(
+                DeviceId: Guid.NewGuid().ToString("N"),
+                DisplayName: Environment.MachineName,
+                Platform: OperatingSystem.IsWindows() ? "windows" : (OperatingSystem.IsAndroid() ? "android" : "unknown"),
+                ProtocolVersion: ProtocolEnvelope.CurrentProtocolVersion,
+                ControlPort: controlServer.Port,
+                Capabilities: new List<string> { "screen_view", "mouse_control", "keyboard_control" }
+            );
 
             _controlServer.MessageReceived += OnServerMessageReceived;
             _controlServer.ClientDisconnected += OnClientDisconnected;
@@ -87,6 +99,10 @@ namespace ProjectName.Shared.Session
         {
             switch (envelope.Type)
             {
+                case MessageTypes.DiscoveryQuery:
+                    await HandleDiscoveryQueryAsync(envelope).ConfigureAwait(false);
+                    break;
+
                 case MessageTypes.PairRequest:
                     await HandlePairRequestAsync(envelope).ConfigureAwait(false);
                     break;
@@ -103,6 +119,12 @@ namespace ProjectName.Shared.Session
                     await HandleSessionStopAsync(envelope).ConfigureAwait(false);
                     break;
 
+                case WebRtcSignalingCoordinator.TypeOffer:
+                case WebRtcSignalingCoordinator.TypeAnswer:
+                case WebRtcSignalingCoordinator.TypeIceCandidate:
+                    SignalingMessageReceived?.Invoke(this, envelope);
+                    break;
+
                 case MessageTypes.InputPointerMove:
                 case MessageTypes.InputPointerButton:
                 case MessageTypes.InputKey:
@@ -111,6 +133,19 @@ namespace ProjectName.Shared.Session
                     HandleIncomingInput(envelope);
                     break;
             }
+        }
+
+        private async Task HandleDiscoveryQueryAsync(ProtocolEnvelope envelope)
+        {
+            var announcePayload = LocalDevicePayload with { ControlPort = _controlServer.Port > 0 ? _controlServer.Port : LocalDevicePayload.ControlPort };
+            var announceEnvelope = ProtocolEnvelope.Create(MessageTypes.DiscoveryAnnounce, announcePayload, 0);
+            await TrySendResponseAsync(announceEnvelope).ConfigureAwait(false);
+        }
+
+        public async Task SendSignalingEnvelopeAsync(ProtocolEnvelope envelope, CancellationToken cancellationToken = default)
+        {
+            if (envelope == null) throw new ArgumentNullException(nameof(envelope));
+            await _controlServer.SendEnvelopeAsync(envelope, cancellationToken).ConfigureAwait(false);
         }
 
         private async Task HandlePairRequestAsync(ProtocolEnvelope envelope)

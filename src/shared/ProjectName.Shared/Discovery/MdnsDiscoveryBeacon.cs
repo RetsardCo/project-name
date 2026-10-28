@@ -57,9 +57,17 @@ namespace ProjectName.Shared.Discovery
                     var client = new UdpClient();
                     client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
                     
-                    // Bind to any local port or 5353
-                    var localEndpoint = new IPEndPoint(IPAddress.Any, 0);
-                    client.Client.Bind(localEndpoint);
+                    // Attempt to bind to standard mDNS port 5353 with socket reuse, falling back to ephemeral port
+                    try
+                    {
+                        var mDnsEndpoint = new IPEndPoint(IPAddress.Any, MdnsPort);
+                        client.Client.Bind(mDnsEndpoint);
+                    }
+                    catch
+                    {
+                        var fallbackEndpoint = new IPEndPoint(IPAddress.Any, 0);
+                        client.Client.Bind(fallbackEndpoint);
+                    }
 
                     try
                     {

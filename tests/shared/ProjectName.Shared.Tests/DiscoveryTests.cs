@@ -4,6 +4,8 @@ using System.Text.Json;
 using ProjectName.Shared.Discovery;
 using ProjectName.Shared.Protocol;
 using ProjectName.Shared.Protocol.Payloads;
+using ProjectName.Shared.Session;
+using ProjectName.Shared.Transport;
 using Xunit;
 
 namespace ProjectName.Shared.Tests
@@ -57,6 +59,57 @@ namespace ProjectName.Shared.Tests
             Assert.Equal("192.168.1.50", device.HostOrIp);
             Assert.Equal(8443, device.ControlPort);
             Assert.Equal(2, device.Capabilities.Count);
+        }
+
+        [Fact]
+        public async Task DirectConnectService_ProbeEndpointAsync_SuccessfullyQueriesDeviceOverTls()
+        {
+            var serverPayload = new DiscoveryPayload(
+                DeviceId: "probe-target-device",
+                DisplayName: "Living Room PC",
+                Platform: "windows",
+                ProtocolVersion: "1.0",
+                ControlPort: 0,
+                Capabilities: new List<string> { "screen_view", "mouse_control" }
+            );
+
+            await using var server = new TlsControlServer(port: 0);
+            var coordinator = new SessionCoordinator(server, localPayload: serverPayload);
+            await server.StartAsync();
+
+            var discovered = await DirectConnectService.ProbeEndpointAsync("127.0.0.1", server.Port);
+
+            Assert.NotNull(discovered);
+            Assert.Equal("probe-target-device", discovered.DeviceId);
+            Assert.Equal("Living Room PC", discovered.DisplayName);
+            Assert.Equal("windows", discovered.Platform);
+            Assert.Equal(server.Port, discovered.ControlPort);
+            Assert.Contains("screen_view", discovered.Capabilities);
+            Assert.Contains("mouse_control", discovered.Capabilities);
+
+            await server.StopAsync();
+        }
+
+        [Fact]
+        public async Task MdnsDiscoveryBeacon_StartsAndStopsCleanly()
+        {
+            var localPayload = new DiscoveryPayload(
+                DeviceId: "beacon-device-1",
+                DisplayName: "Beacon Test",
+                Platform: "windows",
+                ProtocolVersion: "1.0",
+                ControlPort: 9000,
+                Capabilities: new List<string> { "screen_view" }
+            );
+
+            await using var beacon = new MdnsDiscoveryBeacon(localPayload);
+            await beacon.StartAsync();
+
+            // Query should not throw
+            await beacon.QueryPeersAsync();
+            await beacon.AnnouncePresenceAsync();
+
+            await beacon.StopAsync();
         }
     }
 }

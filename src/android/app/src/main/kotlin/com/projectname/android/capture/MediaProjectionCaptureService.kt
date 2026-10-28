@@ -59,13 +59,26 @@ class MediaProjectionCaptureService : Service() {
         when (action) {
             ACTION_START -> {
                 val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, 0)
-                val resultData = intent.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
+                val resultData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(EXTRA_RESULT_DATA)
+                }
                 val width = intent.getIntExtra(EXTRA_WIDTH, 1280)
                 val height = intent.getIntExtra(EXTRA_HEIGHT, 720)
                 val density = intent.getIntExtra(EXTRA_DENSITY, 320)
 
                 if (resultCode != 0 && resultData != null) {
-                    startForeground(NOTIFICATION_ID, createForegroundNotification())
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        startForeground(
+                            NOTIFICATION_ID,
+                            createForegroundNotification(),
+                            android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+                        )
+                    } else {
+                        startForeground(NOTIFICATION_ID, createForegroundNotification())
+                    }
                     startMediaProjection(resultCode, resultData, width, height, density)
                 }
             }
@@ -102,9 +115,6 @@ class MediaProjectionCaptureService : Service() {
                     try {
                         val planes = image.planes
                         val buffer = planes[0].buffer
-                        val pixelStride = planes[0].pixelStride
-                        val rowStride = planes[0].rowStride
-                        val rowPadding = rowStride - pixelStride * width
 
                         // Extract ephemeral raw bytes into memory buffer
                         val bytes = ByteArray(buffer.remaining())

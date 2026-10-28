@@ -1,6 +1,7 @@
 using System;
 using System.Text.Json;
 using System.Threading.Tasks;
+using ProjectName.Shared.Media;
 using ProjectName.Shared.Protocol;
 using ProjectName.Shared.Protocol.Payloads;
 using ProjectName.Shared.Session;
@@ -144,6 +145,83 @@ namespace ProjectName.Shared.Tests
 
             Assert.Equal(SessionStatus.Idle, coordinator.Status);
             Assert.Null(coordinator.ActiveSessionId);
+        }
+
+        [Fact]
+        public async Task SessionCoordinator_FullEndToEndPairingOverTls_SucceedsWithoutReplayRejection()
+        {
+            await using var server = new TlsControlServer(port: 0);
+            var coordinator = new SessionCoordinator(server);
+            await server.StartAsync();
+
+            await using var client = new TlsControlClient();
+            var challengeTcs = new TaskCompletionSource<PairChallengePayload>();
+            var resultTcs = new TaskCompletionSource<PairResultPayload>();
+
+            client.MessageReceived += (_, e) =>
+            {
+                if (e.Envelope.Type == MessageTypes.PairChallenge)
+                {
+                    var ch = e.Envelope.Payload.Deserialize<PairChallengePayload>();
+                    if (ch != null) challengeTcs.TrySetResult(ch);
+                }
+                else if (e.Envelope.Type == MessageTypes.PairResult)
+                {
+                    var res = e.Envelope.Payload.Deserialize<PairResultPayload>();
+                    if (res != null) resultTcs.TrySetResult(res);
+                }
+            };
+
+            await client.ConnectAsync("127.0.0.1", server.Port);
+
+            // 1. Send PAIR_REQUEST from client
+            await client.SendMessageAsync(
+                MessageTypes.PairRequest,
+                new PairRequestPayload("controller-device-1", "Mobile App", "pubkey-123"));
+
+            // Wait for challenge (server responds with PAIR_CHALLENGE)
+            var challengeWait = await Task.WhenAny(challengeTcs.Task, Task.Delay(3000));
+            Assert.Equal(challengeTcs.Task, challengeWait);
+            var challenge = await challengeTcs.Task;
+            Assert.NotNull(challenge.PinCode);
+            Assert.Equal(6, challenge.PinCode.Length);
+
+            // 2. Submit matching PIN in PAIR_CONFIRM
+            await client.SendMessageAsync(
+                MessageTypes.PairConfirm,
+                new PairConfirmPayload("controller-device-1", challenge.PinCode, "signed-nonce-123"));
+
+            // Wait for PAIR_RESULT from server
+            var resultWait = await Task.WhenAny(resultTcs.Task, Task.Delay(3000));
+            Assert.Equal(resultTcs.Task, resultWait);
+            var result = await resultTcs.Task;
+
+            Assert.Equal("SUCCESS", result.Status);
+            Assert.NotNull(result.AuthToken);
+            Assert.True(client.IsConnected); // Must NOT be terminated due to sequence replay!
+
+            await client.DisconnectAsync();
+            await server.StopAsync();
+        }
+
+        [Fact]
+        public async Task SessionCoordinator_WebRtcSignaling_RoutesToSignalingEvent()
+        {
+            await using var server = new TlsControlServer(port: 0);
+            var coordinator = new SessionCoordinator(server);
+
+            ProtocolEnvelope? receivedSignalingEnv = null;
+            coordinator.SignalingMessageReceived += (_, env) => receivedSignalingEnv = env;
+
+            var offerEnv = ProtocolEnvelope.Create(
+                WebRtcSignalingCoordinator.TypeOffer,
+                new WebRtcSignalingPayload("sess-1", "v=0\r\no=controller...", null, null, null),
+                1);
+
+            await coordinator.HandleEnvelopeAsync(offerEnv);
+
+            Assert.NotNull(receivedSignalingEnv);
+            Assert.Equal(WebRtcSignalingCoordinator.TypeOffer, receivedSignalingEnv!.Type);
         }
     }
 }

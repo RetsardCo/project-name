@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
+using ProjectName.Shared.Media;
 using ProjectName.Shared.Protocol;
 using ProjectName.Shared.Protocol.Payloads;
 using ProjectName.Shared.Session;
@@ -201,6 +203,94 @@ namespace ProjectName.Windows.Tests
             Assert.Empty(mockInjector.HeldButtons);
             Assert.Equal(0, buffer.QueuedFramesCount);
             Assert.Equal(SessionStatus.Idle, coordinator.Status);
+        }
+
+        [Fact]
+        public async Task WindowsDesktopEndpoint_CreateMediaPipeline_StreamsFramesFromCaptureBuffer()
+        {
+            var mockInjector = new MockInputInjector();
+            await using var server = new TlsControlServer(port: 0);
+            var coordinator = new SessionCoordinator(server);
+            var buffer = new WindowsCaptureBuffer(2);
+
+            await using var endpoint = new WindowsDesktopEndpoint(
+                server,
+                coordinator,
+                mockInjector,
+                buffer);
+
+            var mockTransport = new MockEndpointMediaTransport();
+            var pipeline = endpoint.CreateMediaPipeline(mockTransport, targetFps: 60);
+
+            // Push frame into endpoint's buffer
+            buffer.PushFrame(new byte[] { 0xAA, 0xBB, 0xCC }, 1920, 1080, 5000);
+
+            await pipeline.StartAsync();
+            await Task.Delay(100);
+            await pipeline.StopAsync();
+
+            Assert.True(mockTransport.FrameCount > 0);
+            Assert.NotNull(endpoint.MediaPipeline);
+        }
+
+        [Fact]
+        public async Task WindowsDesktopEndpoint_SignalingCoordinator_ReceivesWebRtcEnvelopes()
+        {
+            var mockInjector = new MockInputInjector();
+            await using var server = new TlsControlServer(port: 0);
+            var coordinator = new SessionCoordinator(server);
+            var buffer = new WindowsCaptureBuffer(2);
+
+            await using var endpoint = new WindowsDesktopEndpoint(
+                server,
+                coordinator,
+                mockInjector,
+                buffer);
+
+            string? receivedOffer = null;
+            endpoint.SignalingCoordinator.OfferReceived += (_, payload) => receivedOffer = payload.Sdp;
+
+            var offerEnv = ProtocolEnvelope.Create(
+                WebRtcSignalingCoordinator.TypeOffer,
+                new WebRtcSignalingPayload("session-win-webrtc", "v=0\r\no=win...", null, null, null),
+                1);
+
+            await coordinator.HandleEnvelopeAsync(offerEnv);
+
+            Assert.Equal("v=0\r\no=win...", receivedOffer);
+        }
+    }
+
+    public class MockEndpointMediaTransport : IMediaStreamingTransport
+    {
+        public bool IsStreaming { get; private set; }
+        public int FrameCount { get; private set; }
+
+        public event EventHandler<MediaFrameEventArgs>? FrameReceived;
+
+        public Task StartAsync(CancellationToken cancellationToken = default)
+        {
+            IsStreaming = true;
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync()
+        {
+            IsStreaming = false;
+            return Task.CompletedTask;
+        }
+
+        public Task SendVideoFrameAsync(byte[] frameData, int width, int height, long timestampMs, CancellationToken cancellationToken = default)
+        {
+            FrameCount++;
+            FrameReceived?.Invoke(this, new MediaFrameEventArgs(frameData, width, height, timestampMs));
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            IsStreaming = false;
+            return ValueTask.CompletedTask;
         }
     }
 }

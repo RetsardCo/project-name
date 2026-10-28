@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using ProjectName.Shared.Media;
 using ProjectName.Shared.Protocol;
 using ProjectName.Shared.Protocol.Payloads;
 using ProjectName.Shared.Session;
@@ -29,6 +31,9 @@ namespace ProjectName.Windows.Endpoint
         public SessionCoordinator SessionCoordinator => _sessionCoordinator;
         public IWindowsInputInjector InputInjector => _inputInjector;
         public WindowsCaptureBuffer CaptureBuffer => _captureBuffer;
+        public WindowsDesktopCaptureService CaptureService => _captureService;
+        public WebRtcSignalingCoordinator SignalingCoordinator { get; } = new();
+        public BoundedMediaPipeline? MediaPipeline { get; private set; }
         public bool IsRunning { get; private set; }
 
         public event EventHandler<string>? EmergencyDisconnectTriggered;
@@ -45,12 +50,48 @@ namespace ProjectName.Windows.Endpoint
             _sessionCoordinator = sessionCoordinator ?? new SessionCoordinator(_controlServer);
             _captureService = new WindowsDesktopCaptureService(_captureBuffer);
 
+            // Configure device identity
+            _sessionCoordinator.LocalDevicePayload = new DiscoveryPayload(
+                DeviceId: "win-" + Environment.MachineName.ToLowerInvariant(),
+                DisplayName: Environment.MachineName,
+                Platform: "windows",
+                ProtocolVersion: ProtocolEnvelope.CurrentProtocolVersion,
+                ControlPort: _controlServer.Port,
+                Capabilities: new List<string> { "screen_view", "mouse_control", "keyboard_control" }
+            );
+
             // Wire input dispatch
             _sessionCoordinator.AuthorizedInputReceived += OnAuthorizedInputReceived;
+
+            // Wire WebRTC signaling
+            _sessionCoordinator.SignalingMessageReceived += (_, env) => SignalingCoordinator.ProcessSignalingEnvelope(env);
 
             // Wire disconnect safety: immediately release all held inputs when session terminates
             _sessionCoordinator.SessionStopped += OnSessionStopped;
             _controlServer.ClientDisconnected += OnClientDisconnected;
+        }
+
+        /// <summary>
+        /// Creates and wires the bounded real-time media streaming pipeline to a transport.
+        /// </summary>
+        public BoundedMediaPipeline CreateMediaPipeline(IMediaStreamingTransport transport, int targetFps = 30)
+        {
+            if (transport == null) throw new ArgumentNullException(nameof(transport));
+
+            var pipeline = new BoundedMediaPipeline(
+                transport,
+                frameProvider: (_) =>
+                {
+                    if (_captureBuffer.TryGetNextFrame(out var frame) && frame != null)
+                    {
+                        return (frame.Data, frame.Width, frame.Height, frame.TimestampMs);
+                    }
+                    return (null, 0, 0, 0);
+                },
+                targetFps: targetFps);
+
+            MediaPipeline = pipeline;
+            return pipeline;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken = default)
@@ -126,6 +167,11 @@ namespace ProjectName.Windows.Endpoint
             _inputInjector.ReleaseAllHeldInputs();
             _captureBuffer.Clear();
 
+            if (MediaPipeline != null)
+            {
+                try { await MediaPipeline.StopAsync().ConfigureAwait(false); } catch { }
+            }
+
             _sessionCoordinator.TerminateActiveSession(reason);
             await _controlServer.DisconnectCurrentClientAsync(reason).ConfigureAwait(false);
 
@@ -143,6 +189,11 @@ namespace ProjectName.Windows.Endpoint
             _inputInjector.ReleaseAllHeldInputs();
             _captureBuffer.Clear();
 
+            if (MediaPipeline != null)
+            {
+                try { await MediaPipeline.StopAsync().ConfigureAwait(false); } catch { }
+            }
+
             await _captureService.StopCaptureAsync().ConfigureAwait(false);
             await _controlServer.StopAsync().ConfigureAwait(false);
         }
@@ -150,6 +201,10 @@ namespace ProjectName.Windows.Endpoint
         public async ValueTask DisposeAsync()
         {
             await StopAsync().ConfigureAwait(false);
+            if (MediaPipeline != null)
+            {
+                try { await MediaPipeline.DisposeAsync().ConfigureAwait(false); } catch { }
+            }
             await _captureService.DisposeAsync().ConfigureAwait(false);
             await _controlServer.DisposeAsync().ConfigureAwait(false);
             GC.SuppressFinalize(this);

@@ -158,5 +158,95 @@ namespace ProjectName.Shared.Tests
             await client1.DisconnectAsync();
             await server.StopAsync();
         }
+
+        [Fact]
+        public async Task TlsControlServer_SendsMultipleEnvelopes_WithStrictlyIncreasingSequenceNumbers()
+        {
+            using var serverCert = EphemeralCertificateGenerator.CreateDeviceCertificate("TestServerSeq");
+            await using var server = new TlsControlServer(port: 0, serverCertificate: serverCert);
+            await server.StartAsync();
+
+            await using var client = new TlsControlClient();
+            var receivedEnvelopes = new System.Collections.Generic.List<ProtocolEnvelope>();
+            var allMessagesReceivedTcs = new TaskCompletionSource<bool>();
+
+            client.MessageReceived += (_, e) =>
+            {
+                lock (receivedEnvelopes)
+                {
+                    receivedEnvelopes.Add(e.Envelope);
+                    if (receivedEnvelopes.Count == 3)
+                    {
+                        allMessagesReceivedTcs.TrySetResult(true);
+                    }
+                }
+            };
+
+            await client.ConnectAsync("127.0.0.1", server.Port);
+
+            // Server sends 3 sequential messages using SendEnvelopeAsync with 0 sequence (auto-incremented)
+            await server.SendEnvelopeAsync(ProtocolEnvelope.Create("MSG_1", new { index = 1 }, 0));
+            await server.SendEnvelopeAsync(ProtocolEnvelope.Create("MSG_2", new { index = 2 }, 0));
+            await server.SendEnvelopeAsync(ProtocolEnvelope.Create("MSG_3", new { index = 3 }, 0));
+
+            var wait = await Task.WhenAny(allMessagesReceivedTcs.Task, Task.Delay(3000));
+            Assert.Equal(allMessagesReceivedTcs.Task, wait);
+
+            Assert.Equal(3, receivedEnvelopes.Count);
+            Assert.Equal(1, receivedEnvelopes[0].SequenceNumber);
+            Assert.Equal(2, receivedEnvelopes[1].SequenceNumber);
+            Assert.Equal(3, receivedEnvelopes[2].SequenceNumber);
+            Assert.True(client.IsConnected); // Must NOT be disconnected by replay validation
+
+            await client.DisconnectAsync();
+            await server.StopAsync();
+        }
+
+        [Fact]
+        public async Task TlsControlClient_DisconnectAsync_IdempotentAndDoesNotThrow()
+        {
+            using var serverCert = EphemeralCertificateGenerator.CreateDeviceCertificate("TestServerIdempotent");
+            await using var server = new TlsControlServer(port: 0, serverCertificate: serverCert);
+            await server.StartAsync();
+
+            await using var client = new TlsControlClient();
+            int disconnectEventCount = 0;
+            client.Disconnected += (_, _) => Interlocked.Increment(ref disconnectEventCount);
+
+            await client.ConnectAsync("127.0.0.1", server.Port);
+            Assert.True(client.IsConnected);
+
+            // Double disconnect must be safe and idempotent
+            await client.DisconnectAsync("First disconnect");
+            await client.DisconnectAsync("Second disconnect");
+
+            Assert.False(client.IsConnected);
+            Assert.Equal(1, disconnectEventCount);
+
+            await server.StopAsync();
+        }
+
+        [Fact]
+        public async Task TlsControlServer_ClientDisconnected_FiresExactlyOnceOnPeerDisconnect()
+        {
+            using var serverCert = EphemeralCertificateGenerator.CreateDeviceCertificate("TestServerOnce");
+            await using var server = new TlsControlServer(port: 0, serverCertificate: serverCert);
+            int serverDisconnectCount = 0;
+            server.ClientDisconnected += (_, _) => Interlocked.Increment(ref serverDisconnectCount);
+
+            await server.StartAsync();
+
+            var client = new TlsControlClient();
+            await client.ConnectAsync("127.0.0.1", server.Port);
+
+            // Cleanly disconnect client
+            await client.DisconnectAsync();
+
+            // Wait brief moment for server to process socket close
+            await Task.Delay(200);
+
+            Assert.Equal(1, serverDisconnectCount);
+            await server.StopAsync();
+        }
     }
 }

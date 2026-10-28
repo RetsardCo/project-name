@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
@@ -179,6 +180,7 @@ namespace ProjectName.Shared.Transport
             TcpClient? tcp;
             SslStream? ssl;
             CancellationTokenSource? cts;
+            EndPoint? remoteEndPoint = null;
 
             lock (_stateLock)
             {
@@ -189,6 +191,21 @@ namespace ProjectName.Shared.Transport
                 _tcpClient = null;
                 _sslStream = null;
                 _readCts = null;
+            }
+
+            if (tcp == null && ssl == null && cts == null)
+            {
+                // Already disconnected
+                return;
+            }
+
+            try
+            {
+                remoteEndPoint = tcp?.Client?.RemoteEndPoint;
+            }
+            catch
+            {
+                // Ignore if socket already closed or disposed
             }
 
             if (cts != null)
@@ -206,7 +223,7 @@ namespace ProjectName.Shared.Transport
                 try { tcp.Dispose(); } catch { }
             }
 
-            Disconnected?.Invoke(this, new PeerConnectionEventArgs(tcp?.Client?.RemoteEndPoint, reason));
+            Disconnected?.Invoke(this, new PeerConnectionEventArgs(remoteEndPoint, reason));
         }
 
         public async ValueTask DisposeAsync()
