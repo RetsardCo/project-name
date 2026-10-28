@@ -55,6 +55,7 @@ namespace ProjectName.Shared.Session
         public string? ActivePeerDeviceId { get; private set; }
         public string? ActiveScope { get; private set; }
         public DiscoveryPayload LocalDevicePayload { get; set; }
+        public PairingManager PairingManager => _pairingManager;
 
         public event EventHandler<PairingChallengeEventArgs>? PairingChallengePresented;
         public event EventHandler<string>? SessionStarted;

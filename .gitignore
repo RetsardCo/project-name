@@ -4,6 +4,7 @@ obj/
 build/
 out/
 dist/
+publish/
 *.user
 *.userosscache
 *.suo
