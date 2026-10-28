@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using ProjectName.Shared.Protocol;
+using ProjectName.Shared.Protocol.Payloads;
 using Xunit;
 
 namespace ProjectName.Shared.Tests
@@ -24,7 +26,7 @@ namespace ProjectName.Shared.Tests
         public void Envelope_OversizedMessage_IsRejected()
         {
             string hugePayload = new string('A', ProtocolEnvelope.MaxMessageSizeBytes + 10);
-            string raw = $"{{\"protocol_version\":\"1.0\",\"sequence_number\":1,\"type\":\"TEST\",\"payload\":\"{hugePayload}\"}}";
+            string raw = $"{{\"protocol_version\":\"1.0\",\"message_id\":\"msg-huge\",\"sequence_number\":1,\"timestamp_utc_ms\":1700000000000,\"type\":\"TEST\",\"payload\":\"{hugePayload}\"}}";
 
             var result = ProtocolEnvelope.Validate(raw, expectedNextSequence: 1);
 
@@ -43,6 +45,26 @@ namespace ProjectName.Shared.Tests
         }
 
         [Fact]
+        public void Envelope_NegativeSequenceNumber_IsRejected()
+        {
+            var raw = "{\"protocol_version\":\"1.0\",\"message_id\":\"msg-neg\",\"sequence_number\":-1,\"timestamp_utc_ms\":1700000000000,\"type\":\"TEST\",\"payload\":{}}";
+            var result = ProtocolEnvelope.Validate(raw, expectedNextSequence: 0);
+
+            Assert.False(result.IsValid);
+            Assert.Contains("cannot be negative", result.Error);
+        }
+
+        [Fact]
+        public void Envelope_InvalidTimestamp_IsRejected()
+        {
+            var raw = "{\"protocol_version\":\"1.0\",\"message_id\":\"msg-ts\",\"sequence_number\":1,\"timestamp_utc_ms\":0,\"type\":\"TEST\",\"payload\":{}}";
+            var result = ProtocolEnvelope.Validate(raw, expectedNextSequence: 1);
+
+            Assert.False(result.IsValid);
+            Assert.Contains("positive integer", result.Error);
+        }
+
+        [Fact]
         public void Envelope_IncompatibleVersion_IsRejected()
         {
             var raw = "{\"protocol_version\":\"2.0\",\"message_id\":\"msg-1\",\"sequence_number\":1,\"timestamp_utc_ms\":1700000000000,\"type\":\"TEST\",\"payload\":{}}";
@@ -50,6 +72,62 @@ namespace ProjectName.Shared.Tests
 
             Assert.False(result.IsValid);
             Assert.Contains("Incompatible protocol version", result.Error);
+        }
+
+        [Fact]
+        public void Envelope_BlankMessageId_IsRejected()
+        {
+            var raw = "{\"protocol_version\":\"1.0\",\"message_id\":\"\",\"sequence_number\":1,\"timestamp_utc_ms\":1700000000000,\"type\":\"TEST\",\"payload\":{}}";
+            var result = ProtocolEnvelope.Validate(raw, expectedNextSequence: 1);
+            Assert.False(result.IsValid);
+            Assert.Contains("Message ID cannot be null or blank", result.Error);
+        }
+
+        [Fact]
+        public void Envelope_MissingMessageId_IsRejected()
+        {
+            var raw = "{\"protocol_version\":\"1.0\",\"sequence_number\":1,\"timestamp_utc_ms\":1700000000000,\"type\":\"TEST\",\"payload\":{}}";
+            var result = ProtocolEnvelope.Validate(raw, expectedNextSequence: 1);
+            Assert.False(result.IsValid);
+            Assert.Contains("Message ID cannot be null or blank", result.Error);
+        }
+
+        [Fact]
+        public void Envelope_SpanByteValidation_Succeeds()
+        {
+            var envelope = ProtocolEnvelope.Create(MessageTypes.InputTvCommand, new TvCommandPayload("dpad_up"), 5);
+            byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(envelope);
+
+            var result = ProtocolEnvelope.Validate(bytes.AsSpan(), expectedNextSequence: 5);
+            Assert.True(result.IsValid);
+            Assert.Equal(MessageTypes.InputTvCommand, result.Envelope!.Type);
+        }
+
+        [Fact]
+        public void SequenceTracker_EnforcesStrictMonotonicityAndRejectsDuplicates()
+        {
+            var tracker = new SequenceTracker();
+            Assert.Equal(0, tracker.NextExpectedSequence);
+
+            Assert.True(tracker.TryAccept(0, out var err));
+            Assert.Null(err);
+            Assert.Equal(1, tracker.NextExpectedSequence);
+
+            // Replay same sequence number: must reject
+            Assert.False(tracker.TryAccept(0, out err));
+            Assert.Contains("Replay or duplicate sequence", err);
+
+            // Backwards sequence number: must reject
+            Assert.False(tracker.TryAccept(-1, out err));
+            Assert.Contains("cannot be negative", err);
+
+            // Monotonic advancement: accept
+            Assert.True(tracker.TryAccept(1, out err));
+            Assert.Equal(2, tracker.NextExpectedSequence);
+
+            // Forward jump: accept
+            Assert.True(tracker.TryAccept(10, out err));
+            Assert.Equal(11, tracker.NextExpectedSequence);
         }
 
         [Theory]
@@ -65,13 +143,43 @@ namespace ProjectName.Shared.Tests
         }
 
         [Fact]
-        public void CoordinateMapper_Landscape90_RotatesCorrectly()
+        public void CoordinateMapper_Landscape90_NonSquareRotation()
         {
-            // Point at normalized (0.2, 0.8) rotated 90 degrees clockwise:
-            // x_mapped = 1 - 0.8 = 0.2; y_mapped = 0.2
-            var point = CoordinateMapper.MapNormalizedToPixel(0.2, 0.8, 1000, 1000, ScreenOrientation.LandscapeRight);
-            Assert.Equal(200, point.X);
-            Assert.Equal(200, point.Y);
+            // Controller viewport sends normalized (x=0.0, y=1.0) on a 1920x1080 display rotated 90 degrees:
+            // mappedX = (1 - 1.0) = 0.0 -> pixelX = 0
+            // mappedY = 0.0 -> pixelY = 0
+            var point1 = CoordinateMapper.MapNormalizedToPixel(0.0, 1.0, 1920, 1080, ScreenOrientation.LandscapeRight);
+            Assert.Equal(0, point1.X);
+            Assert.Equal(0, point1.Y);
+
+            // Controller normalized (x=1.0, y=0.0):
+            // mappedX = (1 - 0.0) = 1.0 -> pixelX = 1919
+            // mappedY = 1.0 -> pixelY = 1079
+            var point2 = CoordinateMapper.MapNormalizedToPixel(1.0, 0.0, 1920, 1080, ScreenOrientation.LandscapeRight);
+            Assert.Equal(1919, point2.X);
+            Assert.Equal(1079, point2.Y);
+        }
+
+        [Fact]
+        public void CoordinateMapper_NaN_ThrowsArgumentException()
+        {
+            Assert.Throws<ArgumentException>(() => CoordinateMapper.MapNormalizedToPixel(double.NaN, 0.5, 1920, 1080));
+            Assert.Throws<ArgumentException>(() => CoordinateMapper.MapNormalizedToPixel(0.5, double.NaN, 1920, 1080));
+        }
+
+        [Fact]
+        public void CoordinateMapper_Infinity_ThrowsArgumentException()
+        {
+            Assert.Throws<ArgumentException>(() => CoordinateMapper.MapNormalizedToPixel(double.PositiveInfinity, 0.5, 1920, 1080));
+            Assert.Throws<ArgumentException>(() => CoordinateMapper.MapNormalizedToPixel(0.5, double.NegativeInfinity, 1920, 1080));
+        }
+
+        [Fact]
+        public void CoordinateMapper_InverseMapping_MapsCorrectly()
+        {
+            var norm = CoordinateMapper.MapPixelToNormalized(960, 540, 1921, 1081);
+            Assert.Equal(0.5, norm.X, precision: 2);
+            Assert.Equal(0.5, norm.Y, precision: 2);
         }
 
         [Fact]
@@ -121,6 +229,55 @@ namespace ProjectName.Shared.Tests
         }
 
         [Fact]
+        public void PairingManager_TracksDeviceLockoutAcrossNewSessions()
+        {
+            var manager = new PairingManager();
+            var baseTime = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+
+            var session = manager.CreateSession("device-rogue", baseTime);
+
+            // 3 failed attempts
+            manager.ValidateAttempt("device-rogue", "wrong1", baseTime);
+            manager.ValidateAttempt("device-rogue", "wrong2", baseTime);
+            var r3 = manager.ValidateAttempt("device-rogue", "wrong3", baseTime);
+
+            Assert.Equal(PairingStatus.LockedOut, r3.Status);
+
+            // Malicious attacker tries to bypass lockout by requesting a new session immediately
+            Assert.Throws<InvalidOperationException>(() =>
+                manager.CreateSession("device-rogue", baseTime.AddSeconds(10)));
+
+            // After 5 minutes, lockout expires and new session is allowed
+            var allowedSession = manager.CreateSession("device-rogue", baseTime.AddMinutes(5).AddSeconds(1));
+            Assert.NotNull(allowedSession);
+        }
+
+        [Fact]
+        public void PairingManager_PrunesExpiredSessions()
+        {
+            var manager = new PairingManager();
+            var baseTime = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+
+            manager.CreateSession("device-old", baseTime);
+            manager.PruneExpired(baseTime.AddMinutes(2));
+
+            // Should be expired now
+            var result = manager.ValidateAttempt("device-old", "123456", baseTime.AddMinutes(2));
+            Assert.Equal(PairingStatus.Expired, result.Status);
+        }
+
+        [Fact]
+        public void DeviceCapabilities_FromNames_RecognizesMouseControlAlias()
+        {
+            var names = new[] { "mouse_control", "view_screen", "touch_input" };
+            var flags = CapabilityNames.FromNames(names);
+
+            Assert.True(flags.HasFlag(DeviceCapabilityFlags.PointerControl));
+            Assert.True(flags.HasFlag(DeviceCapabilityFlags.ScreenView));
+            Assert.True(flags.HasFlag(DeviceCapabilityFlags.TouchGestures));
+        }
+
+        [Fact]
         public void DeviceCapabilities_FlagsAndNames_RoundTrip()
         {
             var flags = DeviceCapabilityFlags.ScreenView | DeviceCapabilityFlags.PointerControl | DeviceCapabilityFlags.TvNavigation;
@@ -132,6 +289,24 @@ namespace ProjectName.Shared.Tests
             Assert.True(roundTripped.HasFlag(DeviceCapabilityFlags.PointerControl));
             Assert.True(roundTripped.HasFlag(DeviceCapabilityFlags.TvNavigation));
             Assert.False(roundTripped.HasFlag(DeviceCapabilityFlags.TouchGestures));
+        }
+
+        [Fact]
+        public void ProtocolPayloads_Serialization_RoundTripsCorrectly()
+        {
+            var move = new PointerMovePayload(0.42, 0.88);
+            var envelope = ProtocolEnvelope.Create(MessageTypes.InputPointerMove, move, 42);
+
+            string json = JsonSerializer.Serialize(envelope);
+            var validation = ProtocolEnvelope.Validate(json, expectedNextSequence: 42);
+
+            Assert.True(validation.IsValid);
+            Assert.NotNull(validation.Envelope);
+
+            var deserializedMove = JsonSerializer.Deserialize<PointerMovePayload>(validation.Envelope!.Payload.GetRawText());
+            Assert.NotNull(deserializedMove);
+            Assert.Equal(0.42, deserializedMove!.XNorm);
+            Assert.Equal(0.88, deserializedMove.YNorm);
         }
     }
 }

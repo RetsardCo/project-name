@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 
 namespace ProjectName.Shared.Protocol
@@ -28,12 +29,12 @@ namespace ProjectName.Shared.Protocol
 
         public static string GenerateNumericPin()
         {
-            // Secure 6-digit PIN
-            int code = RandomNumberGenerator.GetInt32(100000, 1000000);
+            // Cryptographically secure 6-digit numeric PIN across the full [000000, 999999] keyspace
+            int code = RandomNumberGenerator.GetInt32(0, 1000000);
             return code.ToString("D6");
         }
 
-        public PairingValidationResult ValidateAttempt(string submittedPin, DateTime? checkTimeUtc = null)
+        public PairingValidationResult ValidateAttempt(string? submittedPin, DateTime? checkTimeUtc = null)
         {
             DateTime now = checkTimeUtc ?? DateTime.UtcNow;
 
@@ -47,7 +48,7 @@ namespace ProjectName.Shared.Protocol
                 return PairingValidationResult.Expired();
             }
 
-            if (string.Equals(PinCode, submittedPin, StringComparison.Ordinal))
+            if (!string.IsNullOrEmpty(submittedPin) && string.Equals(PinCode, submittedPin.Trim(), StringComparison.Ordinal))
             {
                 return PairingValidationResult.Success();
             }
@@ -60,6 +61,101 @@ namespace ProjectName.Shared.Protocol
             }
 
             return PairingValidationResult.InvalidPin(MaxAllowedAttempts - FailedAttempts);
+        }
+    }
+
+    public class PairingManager
+    {
+        private readonly ConcurrentDictionary<string, PairingSession> _activeSessions = new(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, DateTime> _deviceLockouts = new(StringComparer.OrdinalIgnoreCase);
+
+        public PairingSession CreateSession(string deviceId, DateTime? nowUtc = null)
+        {
+            if (string.IsNullOrWhiteSpace(deviceId)) throw new ArgumentNullException(nameof(deviceId));
+            DateTime now = nowUtc ?? DateTime.UtcNow;
+
+            if (IsDeviceLockedOut(deviceId, now, out var lockedUntil))
+            {
+                throw new InvalidOperationException($"Device '{deviceId}' is currently locked out until {lockedUntil:o} due to excessive failed attempts.");
+            }
+
+            string pin = PairingSession.GenerateNumericPin();
+            var session = new PairingSession(deviceId, pin, now);
+            _activeSessions[deviceId] = session;
+            return session;
+        }
+
+        public PairingValidationResult ValidateAttempt(string deviceId, string? submittedPin, DateTime? nowUtc = null)
+        {
+            if (string.IsNullOrWhiteSpace(deviceId)) return PairingValidationResult.InvalidPin(0);
+            DateTime now = nowUtc ?? DateTime.UtcNow;
+
+            if (IsDeviceLockedOut(deviceId, now, out var lockedUntil))
+            {
+                return PairingValidationResult.LockedOut(lockedUntil!.Value);
+            }
+
+            if (!_activeSessions.TryGetValue(deviceId, out var session))
+            {
+                return PairingValidationResult.Expired();
+            }
+
+            var result = session.ValidateAttempt(submittedPin, now);
+            if (result.Status == PairingStatus.LockedOut && result.LockedUntilUtc.HasValue)
+            {
+                _deviceLockouts[deviceId] = result.LockedUntilUtc.Value;
+            }
+            else if (result.Status == PairingStatus.Success)
+            {
+                _activeSessions.TryRemove(deviceId, out _);
+                _deviceLockouts.TryRemove(deviceId, out _);
+            }
+
+            return result;
+        }
+
+        public bool IsDeviceLockedOut(string deviceId, DateTime? nowUtc, out DateTime? lockedUntil)
+        {
+            DateTime now = nowUtc ?? DateTime.UtcNow;
+            if (_deviceLockouts.TryGetValue(deviceId, out var until))
+            {
+                if (now < until)
+                {
+                    lockedUntil = until;
+                    return true;
+                }
+                _deviceLockouts.TryRemove(deviceId, out _);
+            }
+
+            lockedUntil = null;
+            return false;
+        }
+
+        public bool Revoke(string deviceId)
+        {
+            bool removedSession = _activeSessions.TryRemove(deviceId, out _);
+            bool removedLockout = _deviceLockouts.TryRemove(deviceId, out _);
+            return removedSession || removedLockout;
+        }
+
+        public void PruneExpired(DateTime? nowUtc = null)
+        {
+            DateTime now = nowUtc ?? DateTime.UtcNow;
+            foreach (var kvp in _activeSessions)
+            {
+                if (now > kvp.Value.ExpiresAtUtc && (!kvp.Value.LockedUntilUtc.HasValue || now >= kvp.Value.LockedUntilUtc.Value))
+                {
+                    _activeSessions.TryRemove(kvp.Key, out _);
+                }
+            }
+
+            foreach (var kvp in _deviceLockouts)
+            {
+                if (now >= kvp.Value)
+                {
+                    _deviceLockouts.TryRemove(kvp.Key, out _);
+                }
+            }
         }
     }
 

@@ -12,8 +12,13 @@ namespace ProjectName.Shared.Protocol
 
     public record PixelPoint(int X, int Y);
 
+    public record NormalizedPoint(double X, double Y);
+
     public static class CoordinateMapper
     {
+        /// <summary>
+        /// Maps normalized coordinates [0.0, 1.0] from a controller viewport to physical target screen pixels [0, width-1], [0, height-1].
+        /// </summary>
         public static PixelPoint MapNormalizedToPixel(
             double xNorm,
             double yNorm,
@@ -21,6 +26,10 @@ namespace ProjectName.Shared.Protocol
             int screenHeight,
             ScreenOrientation orientation = ScreenOrientation.Portrait)
         {
+            if (double.IsNaN(xNorm) || double.IsInfinity(xNorm))
+                throw new ArgumentException("Normalized X coordinate must be a finite number.", nameof(xNorm));
+            if (double.IsNaN(yNorm) || double.IsInfinity(yNorm))
+                throw new ArgumentException("Normalized Y coordinate must be a finite number.", nameof(yNorm));
             if (screenWidth <= 0) throw new ArgumentOutOfRangeException(nameof(screenWidth), "Width must be positive.");
             if (screenHeight <= 0) throw new ArgumentOutOfRangeException(nameof(screenHeight), "Height must be positive.");
 
@@ -64,6 +73,26 @@ namespace ProjectName.Shared.Protocol
             return new PixelPoint(
                 Math.Clamp(pixelX, 0, screenWidth - 1),
                 Math.Clamp(pixelY, 0, screenHeight - 1));
+        }
+
+        /// <summary>
+        /// Maps physical screen pixel coordinates [0, width-1] to normalized [0.0, 1.0] coordinates.
+        /// </summary>
+        public static NormalizedPoint MapPixelToNormalized(
+            int pixelX,
+            int pixelY,
+            int screenWidth,
+            int screenHeight)
+        {
+            if (screenWidth <= 1) throw new ArgumentOutOfRangeException(nameof(screenWidth), "Width must be greater than 1.");
+            if (screenHeight <= 1) throw new ArgumentOutOfRangeException(nameof(screenHeight), "Height must be greater than 1.");
+
+            double clampedX = Math.Clamp(pixelX, 0, screenWidth - 1);
+            double clampedY = Math.Clamp(pixelY, 0, screenHeight - 1);
+
+            return new NormalizedPoint(
+                clampedX / (screenWidth - 1),
+                clampedY / (screenHeight - 1));
         }
     }
 }

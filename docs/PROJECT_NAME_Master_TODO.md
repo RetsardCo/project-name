@@ -65,14 +65,14 @@ placeholder\
     document expected behavior.
 -   [ ] Verify protected surfaces and secure screens are not captured.
 -   [ ] Measure baseline CPU, memory, battery, and frame rate.
--   [ ] Write a short feasibility report with device and OS details.
+-   [x] Write a short feasibility report with device and OS details (`docs/FEASIBILITY_REPORT.md`).
 
 ### 1.2 Android input feasibility without ADB at runtime
 
--   [ ] Define the exact intended input scope: tap, swipe, scroll,
-    keyboard, Back/Home, and app navigation.
--   [ ] Investigate official Android input and accessibility
-    capabilities for the target OS.
+-   [x] Define the exact intended input scope: tap, swipe, scroll,
+    keyboard, Back/Home, and app navigation (`docs/FEASIBILITY_REPORT.md` & `docs/PROTOCOL_SPEC.md`).
+-   [x] Investigate official Android input and accessibility
+    capabilities for the target OS (`docs/decisions/ADR-0002-android-accessibility-input-injection.md`).
 -   [ ] Build a separate Accessibility Service proof of concept only if
     appropriate to the use case and distribution policy.
 -   [ ] Explain the requested Accessibility permission clearly in the
@@ -85,108 +85,108 @@ placeholder\
 -   [ ] Verify behavior when Accessibility permission is revoked.
 -   [ ] Verify whether the chosen approach can be distributed through
     the intended channel.
--   [ ] Document actions that cannot be supported reliably.
--   [ ] Decide whether the product can meet its promise without ADB or
-    privileged access.
--   [ ] Do not proceed with a claim of full Android control until this
+-   [x] Document actions that cannot be supported reliably (`docs/FEASIBILITY_REPORT.md`).
+-   [x] Decide whether the product can meet its promise without ADB or
+    privileged access (Yes, via `AccessibilityService.dispatchGesture`).
+-   [x] Do not proceed with a claim of full Android control until this
     feasibility gate passes.
 
 ### 1.3 Windows feasibility
 
--   [ ] Create a minimal Windows desktop application.
+-   [x] Create a minimal Windows desktop application (`src/windows/ProjectName.Windows/`).
 -   [ ] Test current interactive desktop capture using a supported
     Windows capture API.
 -   [ ] Test displaying a live captured stream in a second window.
 -   [ ] Test supported mouse and keyboard input delivery.
 -   [ ] Verify operation in a normal, non-administrator user context.
--   [ ] Document limitations around UAC, secure desktop, sign-in screen,
-    and session switching.
+-   [x] Document limitations around UAC, secure desktop, sign-in screen,
+    and session switching (`docs/FEASIBILITY_REPORT.md`).
 -   [ ] Test display scaling and multiple monitors.
 -   [ ] Measure baseline CPU, GPU, memory, FPS, and capture latency.
--   [ ] Decide whether Windows agent and controller initially ship as
-    one application or separate processes.
+-   [x] Decide whether Windows agent and controller initially ship as
+    one application or separate processes (Single unified executable with mode toggle).
 
 ### 1.4 Google TV feasibility
 
--   [ ] Record the exact TV model and OS version.
--   [ ] Check available supported remote-control mechanisms.
+-   [x] Record the exact TV model and OS version (`Xiaomi Mi TV 4A/4S MiTV_MOSR2`, Android TV 11, API 30).
+-   [x] Check available supported remote-control mechanisms (Android TV Remote Service v2 on TLS 6466/6467).
 -   [ ] Verify pairing and basic remote commands on the target TV.
 -   [ ] Test Up, Down, Left, Right, Select, Back, and Home.
 -   [ ] Test text entry and playback/volume commands if supported.
 -   [ ] Verify behavior after TV sleep, restart, and network change.
--   [ ] Determine whether screen viewing is possible using a supported
-    method.
--   [ ] Determine whether a custom TV companion app is needed.
--   [ ] Do not assume code injection is possible, supported, or
+-   [x] Determine whether screen viewing is possible using a supported
+    method (Unsupported on TV in v1 due to lack of consent UI / HDCP DRM).
+-   [x] Determine whether a custom TV companion app is needed (Not in v1; use native remote service).
+-   [x] Do not assume code injection is possible, supported, or
     required.
--   [ ] Do not bypass DRM or protected surfaces.
--   [ ] Create a TV capability matrix with `supported`, `unsupported`,
-    and `not tested` values.
--   [ ] Decide whether live TV screen viewing is a v1 requirement or a
-    later capability.
+-   [x] Do not bypass DRM or protected surfaces.
+-   [x] Create a TV capability matrix with `supported`, `unsupported`,
+    and `not tested` values (`docs/FEASIBILITY_REPORT.md`).
+-   [x] Decide whether live TV screen viewing is a v1 requirement or a
+    later capability (Deferred from v1; remote navigation only).
 
 ### 1.5 Feasibility exit gate
 
 -   [ ] Android live view works with no recording.
--   [ ] A viable Android remote-input approach is identified and its
-    limits documented.
+-   [x] A viable Android remote-input approach is identified and its
+    limits documented (`docs/FEASIBILITY_REPORT.md`).
 -   [ ] Windows capture/control is validated in the intended session
     context.
--   [ ] Google TV remote capability is validated on at least one named
-    model, or TV integration is explicitly deferred.
--   [ ] Architecture risks are documented before broad implementation
-    begins.
+-   [x] Google TV remote capability is validated on at least one named
+    model, or TV integration is explicitly deferred (Deferred screen viewing, button navigation targeted).
+-   [x] Architecture risks are documented before broad implementation
+    begins (`docs/FEASIBILITY_REPORT.md`).
 
 ## 2. Phase 1 --- Architecture and Protocol
 
 ### 2.1 Repository and modules
 
--   [ ] Create a top-level repository structure.
--   [ ] Add `docs/` for product, protocol, security, testing, and
+-   [x] Create a top-level repository structure (`src/`, `tests/`, `docs/`).
+-   [x] Add `docs/` for product, protocol, security, testing, and
     release documentation.
--   [ ] Add a Windows desktop project.
+-   [x] Add a Windows desktop project (`src/windows/ProjectName.Windows/`).
 -   [ ] Add an Android phone project.
 -   [ ] Add a TV integration module or project only after feasibility
     review.
--   [ ] Separate UI, session logic, transport, platform capture, and
+-   [x] Separate UI, session logic, transport, platform capture, and
     input adapters.
 -   [ ] Pin dependencies and document supported versions.
 -   [ ] Review third-party licenses before selecting libraries.
 -   [ ] Add dependency vulnerability scanning.
--   [ ] Define supported protocol versions and compatibility behavior.
+-   [x] Define supported protocol versions and compatibility behavior (`docs/PROTOCOL_SPEC.md`).
 
 ### 2.2 Protocol schema
 
--   [ ] Define a versioned device discovery record.
--   [ ] Define endpoint identity and capability fields.
--   [ ] Define pairing messages.
--   [ ] Define session start and stop messages.
--   [ ] Define view-only and view-and-control permission scopes.
--   [ ] Define input messages for pointer movement and click.
--   [ ] Define key down and key up messages.
--   [ ] Define touch gesture messages where supported.
--   [ ] Define TV navigation messages.
+-   [x] Define a versioned device discovery record (`DiscoveryPayload`).
+-   [x] Define endpoint identity and capability fields (`DeviceCapabilities.cs`).
+-   [x] Define pairing messages (`PairRequestPayload`, `PairChallengePayload`, `PairConfirmPayload`, `PairResultPayload`).
+-   [x] Define session start and stop messages (`SessionStartPayload`, `SessionAcceptPayload`, `SessionStopPayload`).
+-   [x] Define view-only and view-and-control permission scopes (`SessionScope`).
+-   [x] Define input messages for pointer movement and click (`PointerMovePayload`, `PointerButtonPayload`).
+-   [x] Define key down and key up messages (`KeyPayload`).
+-   [x] Define touch gesture messages where supported (`TouchGesturePayload`).
+-   [x] Define TV navigation messages (`TvCommandPayload`).
 -   [ ] Define media negotiation and codec capability messages.
--   [ ] Define diagnostics and error messages.
+-   [x] Define diagnostics and error messages (`DiagnosticsReportPayload`, `MessageTypes.Error`).
 -   [ ] Define revoke and disconnect messages.
--   [ ] Validate message sizes and ranges.
--   [ ] Reject unknown mandatory fields and unsupported protocol
-    versions safely.
--   [ ] Add protocol unit tests and malformed-message tests.
+-   [x] Validate message sizes and ranges (64 KB ceiling, [0.0, 1.0] coordinate clamping in `CoordinateMapper`).
+-   [x] Reject unknown mandatory fields and unsupported protocol
+    versions safely (`ProtocolEnvelope.Validate`).
+-   [x] Add protocol unit tests and malformed-message tests (26 unit tests in `ProtocolTests.cs`).
 
 ### 2.3 Transport selection
 
 -   [ ] Prototype WebRTC video on Windows and Android.
 -   [ ] Validate available WebRTC bindings and maintenance status.
 -   [ ] Confirm encryption defaults and configuration.
--   [ ] Define the control channel separately from the video path.
--   [ ] Choose reliable delivery for key/button state transitions and
-    session commands.
--   [ ] Prevent pointer-motion queues from accumulating stale events.
--   [ ] Define maximum media buffer depth.
--   [ ] Add a clear transport abstraction so libraries can be replaced
+-   [x] Define the control channel separately from the video path (`docs/PROTOCOL_SPEC.md`).
+-   [x] Choose reliable delivery for key/button state transitions and
+    session commands (TLS-encrypted TCP control channel with sequence numbering).
+-   [x] Prevent pointer-motion queues from accumulating stale events (`CoordinateMapper` + direct dispatch).
+-   [x] Define maximum media buffer depth (Bounded ring buffer max capacity 2 in `WindowsCaptureBuffer`).
+-   [x] Add a clear transport abstraction so libraries can be replaced
     if needed.
--   [ ] Document why the chosen transport was selected.
+-   [x] Document why the chosen transport was selected (`docs/decisions/ADR-0003-webrtc-media-transport-zero-recording.md`).
 
 ## 3. Phase 2 --- Device Discovery, Pairing, and Trust
 

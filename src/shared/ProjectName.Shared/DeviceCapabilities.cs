@@ -43,20 +43,25 @@ namespace ProjectName.Shared.Protocol
         {
             if (names == null) return DeviceCapabilityFlags.None;
             DeviceCapabilityFlags flags = DeviceCapabilityFlags.None;
-            foreach (var name in names)
+            foreach (var rawName in names)
             {
-                switch (name.ToLowerInvariant())
+                if (string.IsNullOrWhiteSpace(rawName)) continue;
+                var name = rawName.Trim().ToLowerInvariant();
+                switch (name)
                 {
                     case ScreenView:
+                    case "view_screen":
                         flags |= DeviceCapabilityFlags.ScreenView;
                         break;
                     case PointerControl:
+                    case "mouse_control":
                         flags |= DeviceCapabilityFlags.PointerControl;
                         break;
                     case KeyboardControl:
                         flags |= DeviceCapabilityFlags.KeyboardControl;
                         break;
                     case TouchGestures:
+                    case "touch_input":
                         flags |= DeviceCapabilityFlags.TouchGestures;
                         break;
                     case TvNavigation:
