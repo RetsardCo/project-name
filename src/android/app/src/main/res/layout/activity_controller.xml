@@ -2,21 +2,23 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000">
+    android:background="@color/brand_navy">
 
     <!-- Interactive Touch Surface mapping touch inputs to remote mouse pointer -->
     <View
         android:id="@+id/touchCanvas"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#121212" />
+        android:background="#050E1A" />
 
-    <!-- Overlay Status Header -->
+    <!-- Overlay Header with Status & Input Modifiers -->
     <LinearLayout
+        android:id="@+id/controllerHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
-        android:background="#80000000"
+        android:background="#D00D1B2D"
+        android:gravity="center_vertical"
         android:orientation="horizontal"
         android:padding="8dp">
 
@@ -24,30 +26,59 @@
             android:id="@+id/tvSessionInfo"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
             android:layout_weight="1"
-            android:text="Connected: Windows Host"
-            android:textColor="#FFFFFF"
-            android:textSize="12sp" />
+            android:text="Peerlight: Windows PC Endpoint"
+            android:textColor="@color/text_primary"
+            android:textSize="12sp"
+            android:textStyle="bold" />
 
         <Button
             android:id="@+id/btnLeftClick"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Left" />
+            android:layout_width="64dp"
+            android:layout_height="36dp"
+            android:backgroundTint="@color/brand_blue"
+            android:text="Left"
+            android:textColor="#FFFFFF"
+            android:textSize="11sp" />
 
         <Button
             android:id="@+id/btnRightClick"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="64dp"
+            android:layout_height="36dp"
             android:layout_marginStart="4dp"
-            android:text="Right" />
+            android:backgroundTint="@color/brand_surface_elevated"
+            android:text="Right"
+            android:textColor="@color/text_primary"
+            android:textSize="11sp" />
+
+        <Button
+            android:id="@+id/btnKeyboardToggle"
+            android:layout_width="48dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="4dp"
+            android:backgroundTint="@color/brand_surface_elevated"
+            android:text="⌨"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp" />
     </LinearLayout>
+
+    <!-- Center Watermark Guidance -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:alpha="0.25"
+        android:gravity="center"
+        android:text="Drag finger to move pointer\nTap to click • Two fingers to scroll"
+        android:textColor="@color/brand_cyan"
+        android:textSize="14sp" />
 
     <!-- Prominent Emergency Disconnect Floating Button -->
     <Button
         android:id="@+id/btnControllerEmergencyDisconnect"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:layout_alignParentBottom="true"
         android:layout_margin="16dp"
         android:backgroundTint="@color/emergency_red"

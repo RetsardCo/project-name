@@ -1,26 +1,63 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using ProjectName.Shared.Discovery;
 using ProjectName.Shared.Protocol;
 using ProjectName.Tv;
 using ProjectName.Windows.Endpoint;
+using ProjectName.Windows.UI;
 
 namespace ProjectName.Windows
 {
     /// <summary>
-    /// [PROJECT_NAME] Windows Desktop Application Entry Point.
+    /// Peerlight Windows Desktop Application Entry Point.
     /// Manages the desktop screen capture endpoint, secure LAN pairing, remote input receiver,
     /// mDNS discovery beacon, and integrated Google TV remote navigation.
+    /// Defaults to the macOS-inspired desktop GUI with optional CLI fallback (--cli).
     /// </summary>
     public static class Program
     {
+        [STAThread]
         public static async Task<int> Main(string[] args)
         {
-            Console.Title = "[PROJECT_NAME] Windows Desktop Remote Endpoint & Controller";
+            bool runCli = false;
+            foreach (var arg in args)
+            {
+                if (arg.Equals("--cli", StringComparison.OrdinalIgnoreCase) ||
+                    arg.Equals("--console", StringComparison.OrdinalIgnoreCase) ||
+                    arg.Equals("--headless", StringComparison.OrdinalIgnoreCase))
+                {
+                    runCli = true;
+                    break;
+                }
+            }
+
+            if (!runCli && Environment.UserInteractive)
+            {
+                try
+                {
+                    Application.SetHighDpiMode(HighDpiMode.SystemAware);
+                    Application.EnableVisualStyles();
+                    Application.SetCompatibleTextRenderingDefault(false);
+                    Application.Run(new PeerlightMainWindow());
+                    return 0;
+                }
+                catch
+                {
+                    // If GUI initialization fails (e.g. running under non-interactive CI), fall back to console
+                }
+            }
+
+            return await RunConsoleAsync(args);
+        }
+
+        private static async Task<int> RunConsoleAsync(string[] args)
+        {
+            Console.Title = "Peerlight Windows Desktop Remote Endpoint & Controller";
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("========================================================================");
-            Console.WriteLine("    [PROJECT_NAME] - Windows Desktop Endpoint & Remote System (v1.0)    ");
+            Console.WriteLine("       Peerlight — Windows Desktop Endpoint & Remote System (v1.0)       ");
             Console.WriteLine("========================================================================");
             Console.ResetColor();
             Console.WriteLine();
@@ -69,7 +106,7 @@ namespace ProjectName.Windows
             try
             {
                 await beacon.StartAsync();
-                Console.WriteLine("[mDNS] Local LAN discovery beacon broadcasting '_projectname._tcp'.");
+                Console.WriteLine("[mDNS] Local LAN discovery beacon broadcasting '_peerlight._tcp'.");
             }
             catch (Exception ex)
             {
@@ -155,7 +192,7 @@ namespace ProjectName.Windows
             await endpoint.StopAsync();
 
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("[EXIT] Windows Desktop Endpoint stopped cleanly. Goodbye.");
+            Console.WriteLine("[EXIT] Peerlight Windows Desktop Endpoint stopped cleanly. Goodbye.");
             Console.ResetColor();
             return 0;
         }

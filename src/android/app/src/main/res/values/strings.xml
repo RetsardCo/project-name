@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ProjectName Remote</string>
-    <string name="accessibility_service_description">Enables authorized remote touch gestures (taps and scrolls) for authenticated LAN control sessions without runtime ADB.</string>
+    <string name="app_name">Peerlight</string>
+    <string name="app_subtitle">Remote Device Viewing &amp; Control</string>
+    <string name="accessibility_service_description">Enables authorized remote touch gestures (taps and scrolls) for authenticated Peerlight LAN control sessions without runtime ADB.</string>
     <string name="grant_consent">Grant MediaProjection Consent</string>
     <string name="stop_capture">Stop Screen Capture</string>
     <string name="emergency_disconnect">EMERGENCY DISCONNECT</string>
@@ -10,4 +11,31 @@
     <string name="device_diagnostics">Hardware &amp; System Diagnostics</string>
     <string name="pairing_pin_title">Active Pairing PIN</string>
     <string name="no_active_session">No Active Session</string>
+
+    <!-- Navigation Tabs -->
+    <string name="nav_home">Home</string>
+    <string name="nav_devices">Devices</string>
+    <string name="nav_remote">Remote</string>
+    <string name="nav_sessions">Sessions</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Remote & TV Controls -->
+    <string name="remote_pc_title">Windows PC Controller</string>
+    <string name="remote_tv_title">Google TV Remote</string>
+    <string name="dpad_up">Up</string>
+    <string name="dpad_down">Down</string>
+    <string name="dpad_left">Left</string>
+    <string name="dpad_right">Right</string>
+    <string name="dpad_center">OK / Select</string>
+    <string name="btn_back">Back</string>
+    <string name="btn_home">Home</string>
+    <string name="btn_vol_up">Vol +</string>
+    <string name="btn_vol_down">Vol -</string>
+    <string name="btn_play_pause">Play/Pause</string>
+
+    <!-- Device Status -->
+    <string name="status_connected">Connected</string>
+    <string name="status_disconnected">Disconnected</string>
+    <string name="status_discovering">Discovering LAN Devices…</string>
+    <string name="zero_recording_guarantee">Zero Disk Storage: Streaming In-Memory Only</string>
 </resources>

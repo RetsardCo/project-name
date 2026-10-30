@@ -13,5 +13,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ProjectNameAndroid"
+rootProject.name = "PeerlightAndroid"
 include(":app")
+
