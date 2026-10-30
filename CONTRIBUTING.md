@@ -1,16 +1,16 @@
-# Contributing to [PROJECT_NAME]
+# Contributing to Peerlight
 
-Thank you for your interest in contributing to `[PROJECT_NAME]`! Please read through these guidelines before submitting issues or pull requests.
+Thank you for your interest in contributing to **Peerlight**! Please read through these guidelines before submitting issues or pull requests.
 
-## 1. Governance & Placeholder Convention
+## 1. Governance & Project Identity
 
-The project name is intentionally undecided. Keep `[PROJECT_NAME]` as the placeholder in code, documentation, package IDs, and UI until an official name is approved.
+The official product name is **Peerlight**. Use this spelling and capitalization consistently across all code, documentation, assets, and UI.
 
 ## 2. Branching & Commit Conventions
 
 ### Branch Strategy
 - `main`: Protected production-ready branch. All merges must pass automated checks.
-- `feature/<name>`: New feature implementations.
+- `feature/<name>`: New feature implementations (e.g. `feature/peerlight-rebrand-ui`).
 - `fix/<name>`: Bug fixes and security patches.
 - `spike/<name>`: Feasibility audits and exploratory prototypes.
 
@@ -37,7 +37,7 @@ To maintain clarity across platforms and milestones, issues and pull requests ar
 
 ## 4. Definition of Done (DoD)
 
-A feature or task checklist item in [`docs/PROJECT_NAME_Master_TODO.md`](docs/PROJECT_NAME_Master_TODO.md) is marked complete **only** when:
+A feature or task checklist item in [`docs/PEERLIGHT_Master_TODO.md`](docs/PEERLIGHT_Master_TODO.md) is marked complete **only** when:
 1. Working implementation code exists and is committed.
 2. Acceptance criteria are satisfied.
 3. Unit and automated integration tests pass.

@@ -13,10 +13,10 @@ namespace ProjectName.Tv
     {
         public static async Task<int> Main(string[] args)
         {
-            Console.Title = "[PROJECT_NAME] Google TV Remote Controller";
+            Console.Title = "Peerlight Google TV Remote Controller";
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("==================================================================");
-            Console.WriteLine("  [PROJECT_NAME] - Google TV & Android TV Remote Control Console  ");
+            Console.WriteLine("     Peerlight — Google TV & Android TV Remote Controller v1.0    ");
             Console.WriteLine("==================================================================");
             Console.ResetColor();
             Console.WriteLine();

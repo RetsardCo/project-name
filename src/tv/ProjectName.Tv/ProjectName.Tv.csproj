@@ -5,6 +5,11 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Product>Peerlight Google TV Remote</Product>
+    <AssemblyTitle>Peerlight.Tv</AssemblyTitle>
+    <Company>RetsardCo</Company>
+    <Description>Peerlight Google TV / Android TV Remote Control Console</Description>
+    <Version>1.0.0</Version>
     <RootNamespace>ProjectName.Tv</RootNamespace>
   </PropertyGroup>
 

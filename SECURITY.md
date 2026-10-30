@@ -1,8 +1,8 @@
-# Security Policy — [PROJECT_NAME]
+# Security Policy — Peerlight
 
 ## 1. Security Architecture Principles
 
-`[PROJECT_NAME]` is an open, cross-platform, LAN-first remote device viewing and control system. Security, consent, and user privacy are foundational requirements:
+**Peerlight** is an open, cross-platform, LAN-first remote device viewing and control system. Security, consent, and user privacy are foundational requirements:
 
 1. **Permission Before Control:** No device may be viewed or controlled without explicit, cryptographic device pairing and explicit OS-level permission consent on the controlled endpoint.
 2. **Strictly No Screen Recording:** The system provides live streaming only. It must never implement video recording, automated screenshots, session replays, or persistent video buffering on disk.
@@ -14,11 +14,12 @@
 
 | Version | Supported | Status |
 | :--- | :--- | :--- |
-| `0.1.x` (pre-release baseline) | :white_check_mark: | Active Development & Feasibility Validation |
+| `1.0.x` (Release) | :white_check_mark: | Active Supported Release |
+| `0.1.x` (Baseline) | :white_check_mark: | Replaced by 1.0.0 |
 
 ## 3. Reporting a Vulnerability
 
-We take the security of `[PROJECT_NAME]` seriously. If you discover a security vulnerability, we ask that you report it privately to allow remediation before public disclosure.
+We take the security of Peerlight seriously. If you discover a security vulnerability, we ask that you report it privately to allow remediation before public disclosure.
 
 ### Reporting Channels
 - **GitHub Security Advisory:** Please submit a private advisory report via the GitHub repository's **Security** tab -> **Advisories**.

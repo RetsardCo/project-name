@@ -10,8 +10,8 @@ Before starting implementation, clear architectural boundaries, platform constra
 
 ## Decisions
 
-### 1. Placeholder Naming
-The product name remains undecided. The identifier `[PROJECT_NAME]` is mandated across all documentation, metadata, packages, code namespaces, and UI until official branding is approved.
+### 1. Final Approved Product Name
+The official product name is approved as **Peerlight**. All user-facing application titles, launcher icons, visual branding, and documentation use the Peerlight name while technical package IDs remain preserved for upgrade stability.
 
 ### 2. LAN-First Architecture
 The system connects directly over trusted local networks (mDNS discovery + direct TCP/UDP control and media transport). No cloud accounts, external relays, or internet connections are required for LAN operation. WAN connectivity is deferred to Phase 8 and must use a dedicated VPN or end-to-end encrypted relay.

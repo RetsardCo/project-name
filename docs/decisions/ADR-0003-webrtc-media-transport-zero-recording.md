@@ -4,7 +4,7 @@
 Accepted
 
 ## Context
-Non-Negotiable Requirement 3.1 mandates that `[PROJECT_NAME]` is strictly a live viewing and remote control system. It must not implement screen recording, automatic screenshots, session replay, or persistent video archives. In-memory buffers must be strictly bounded and discarded promptly.
+Non-Negotiable Requirement 3.1 mandates that **Peerlight** is strictly a live viewing and remote control system. It must not implement screen recording, automatic screenshots, session replay, or persistent video archives. In-memory buffers must be strictly bounded and discarded promptly.
 
 Furthermore, remote screen interaction requires sub-100ms end-to-end latency on local networks, which conventional streaming protocols (e.g. RTMP, HLS, or chunked TCP video streams) cannot achieve due to large buffering windows.
 

@@ -19,7 +19,7 @@ namespace ProjectName.Shared.Discovery
     /// </summary>
     public class MdnsDiscoveryBeacon : IAsyncDisposable
     {
-        public const string ServiceType = "_projectname._tcp.local.";
+        public const string ServiceType = "_peerlight._tcp.local.";
         public const int MdnsPort = 5353;
         private static readonly IPAddress MulticastAddressV4 = IPAddress.Parse("224.0.0.251");
 

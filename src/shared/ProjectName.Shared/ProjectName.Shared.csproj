@@ -1,9 +1,14 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Product>Peerlight Core Protocol &amp; Media Transport</Product>
+    <AssemblyTitle>Peerlight.Shared</AssemblyTitle>
+    <Company>RetsardCo</Company>
+    <Description>Peerlight Shared Protocol Envelopes, TLS, mDNS Discovery, and Bounded Media Transport</Description>
+    <Version>1.0.0</Version>
   </PropertyGroup>
 
 </Project>

@@ -1,15 +1,15 @@
 # Compatibility and Feasibility Audit Report — Phase 0
-## [PROJECT_NAME] Cross-Platform LAN Remote Viewing & Control System
+## Peerlight Cross-Platform LAN Remote Viewing & Control System
 
 **Author:** System Architecture & Engineering Review  
-**Date:** 2026-10-28  
+**Date:** 2026-10-28 (Updated: 2026-10-31)  
 **Baseline Status:** Phase 0 Feasibility Audit Completed  
 
 ---
 
 ### 1. Executive Summary
 
-This report delivers the technical feasibility findings for `[PROJECT_NAME]` across the identified reference hardware and target platforms: **Windows 11 desktop**, **Android 12 phone (Xiaomi Redmi Note 10)**, and **Google TV / Android TV 11 (Xiaomi Mi TV)**.
+This report delivers the technical feasibility findings for **Peerlight** across the identified reference hardware and target platforms: **Windows 11 desktop**, **Android 12 phone (Xiaomi Redmi Note 10)**, and **Google TV / Android TV 11 (Xiaomi Mi TV)**.
 
 The core product mission—delivering low-latency live screen viewing and remote control over a trusted local network without cloud dependencies, without runtime ADB, and with strict zero-recording guarantees—is **technically feasible within well-defined, documented platform boundaries**.
 

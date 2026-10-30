@@ -1,9 +1,9 @@
-# Protocol Specification v1.0 — [PROJECT_NAME]
+# Protocol Specification v1.0 — Peerlight
 
 ## 1. Overview & Transport Model
 
-`[PROJECT_NAME]` employs a decoupled multi-channel architecture:
-1. **Discovery Layer:** Multicast DNS (mDNS / DNS-SD) over UDP port `5353` with service type `_projectname._tcp.local.`, supplemented by direct IP/port fallback.
+**Peerlight** employs a decoupled multi-channel architecture:
+1. **Discovery Layer:** Multicast DNS (mDNS / DNS-SD) over UDP port `5353` with service type `_peerlight._tcp.local.`, supplemented by direct IP/port fallback.
 2. **Control & Signaling Channel:** Authenticated, TLS-encrypted TCP connection. Handles device identity exchange, challenge-response pairing, session lifecycle management, and discrete remote input (keyboard, mouse, touch, TV d-pad).
 3. **Media Streaming Channel:** Bounded real-time WebRTC media pipeline utilizing hardware encoders/decoders (H.264/VP8/AV1) with zero persistent disk storage.
 
