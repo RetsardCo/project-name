@@ -4,7 +4,7 @@
 Accepted
 
 ## Context
-The project objective is to build `[PROJECT_NAME]`, a cross-platform remote device viewing and control system operating on local area networks (LAN-first). The system must bridge Windows desktop/laptop systems, Android mobile phones, and Google TV / Android TV endpoints.
+The project objective is to build **Peerlight**, a cross-platform remote device viewing and control system operating on local area networks (LAN-first). The system must bridge Windows desktop/laptop systems, Android mobile phones, and Google TV / Android TV endpoints.
 
 Before starting implementation, clear architectural boundaries, platform constraints, and governance standards must be established to prevent technical debt, security regressions, and scope violations.
 

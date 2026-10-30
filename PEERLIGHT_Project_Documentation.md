@@ -1,13 +1,11 @@
-# \[PROJECT_NAME\] --- Product Requirements and Technical Design
+# Peerlight — Product Requirements and Technical Design
 
 **Document type:** Product requirements, architecture, security, and
 implementation specification\
-**Project name:** Intentionally undecided; use `Peerlight` as a
-placeholder\
-**Document status:** Initial baseline for review; not yet
-implementation-approved\
-**Version:** 0.1\
-**Last updated:** 2026-10-28
+**Product name:** Peerlight\
+**Document status:** Release Candidate 1.0 (Implemented & Verified)\
+**Version:** 1.0.0\
+**Last updated:** 2026-10-31
 
 ------------------------------------------------------------------------
 

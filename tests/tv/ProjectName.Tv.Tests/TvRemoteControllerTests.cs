@@ -41,5 +41,28 @@ namespace ProjectName.Tv.Tests
             // Verify keycode 19 (0x13) for DpadUp is present
             Assert.Contains((byte)19, packet);
         }
+
+        [Theory]
+        [InlineData(TvKeyCode.DpadUp, 19)]
+        [InlineData(TvKeyCode.DpadDown, 20)]
+        [InlineData(TvKeyCode.DpadLeft, 21)]
+        [InlineData(TvKeyCode.DpadRight, 22)]
+        [InlineData(TvKeyCode.DpadCenter, 23)]
+        [InlineData(TvKeyCode.Back, 4)]
+        [InlineData(TvKeyCode.Home, 3)]
+        [InlineData(TvKeyCode.VolumeUp, 24)]
+        [InlineData(TvKeyCode.VolumeDown, 25)]
+        [InlineData(TvKeyCode.MediaPlayPause, 85)]
+        public void GoogleTvRemoteClient_EncodeRemoteKeyPacket_AllKeysProduceCorrectKeyCode(TvKeyCode key, int expectedCode)
+        {
+            byte[] packetDown = GoogleTvRemoteClient.EncodeRemoteKeyPacket(key, TvKeyAction.Down);
+            byte[] packetUp = GoogleTvRemoteClient.EncodeRemoteKeyPacket(key, TvKeyAction.Up);
+
+            Assert.Contains((byte)0x52, packetDown);
+            Assert.Contains((byte)expectedCode, packetDown);
+
+            Assert.Contains((byte)0x52, packetUp);
+            Assert.Contains((byte)expectedCode, packetUp);
+        }
     }
 }

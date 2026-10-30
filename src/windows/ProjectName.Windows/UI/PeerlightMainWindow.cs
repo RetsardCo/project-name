@@ -12,6 +12,7 @@ using ProjectName.Shared.Protocol.Payloads;
 using ProjectName.Shared.Session;
 using ProjectName.Shared.Tv;
 using ProjectName.Tv;
+using ProjectName.Windows.Configuration;
 using ProjectName.Windows.Endpoint;
 using ProjectName.Windows.UI.Controls;
 
@@ -19,10 +20,14 @@ namespace ProjectName.Windows.UI
 {
     /// <summary>
     /// Peerlight Windows Desktop Main Application Window.
-    /// Delivers a clean, macOS-inspired minimalist dark theme interface for LAN remote viewing and control.
+    /// Delivers a clean, macOS-inspired minimalist interface for LAN remote viewing and control,
+    /// supporting dynamic light and dark theme switching and real-time device interaction.
     /// </summary>
     public class PeerlightMainWindow : Form
     {
+        // Settings & preferences
+        private PeerlightSettings _settings;
+
         // Backend services
         private WindowsDesktopEndpoint? _endpoint;
         private MdnsDiscoveryBeacon? _beacon;
@@ -58,6 +63,8 @@ namespace ProjectName.Windows.UI
 
         public PeerlightMainWindow(WindowsDesktopEndpoint? endpoint = null)
         {
+            _settings = PeerlightSettings.Load();
+            PeerlightTheme.IsDarkMode = !string.Equals(_settings.ThemeMode, "Light", StringComparison.OrdinalIgnoreCase);
             _endpoint = endpoint;
             InitializeComponent();
             LoadBrandAssets();
@@ -530,10 +537,31 @@ namespace ProjectName.Windows.UI
                 Location = new Point(390, 68),
                 Size = new Size(150, 34)
             };
-            btnConnectPhone.Click += (s, e) =>
+            btnConnectPhone.Click += async (s, e) =>
             {
-                SwitchPage(1); // Go to devices
-                MessageBox.Show(this, "To connect to an Android phone, confirm the 6-digit PIN on the Devices tab.", "Peerlight Phone Connection", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                string host = _txtManualIp.Text.Trim();
+                int port = _settings.ControlPort;
+                btnConnectPhone.Text = "Probing...";
+                try
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                    var device = await DirectConnectService.ProbeEndpointAsync(host, port, cts.Token);
+                    SwitchPage(1); // Go to devices
+                    MessageBox.Show(this,
+                        $"Found Peerlight endpoint!\n\nDevice: {device.DisplayName} ({device.Platform})\nHost: {device.HostOrIp}:{device.ControlPort}\nCapabilities: {string.Join(", ", device.Capabilities)}\n\nPairing challenge initiated.",
+                        "Peerlight Direct Connect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    SwitchPage(1);
+                    MessageBox.Show(this,
+                        $"Could not establish direct connection to {host}:{port}.\nReason: {ex.Message}\n\nEnsure the remote phone is running Peerlight and both devices are on the same local subnet.",
+                        "Peerlight Connection Notice", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+                finally
+                {
+                    btnConnectPhone.Text = "Connect to Phone";
+                }
             };
             connectCard.Controls.Add(btnConnectPhone);
 
@@ -953,11 +981,34 @@ namespace ProjectName.Windows.UI
             {
                 try
                 {
-                    await _tvController.DpadUpAsync(); // Dispatches command
+                    Task dispatchTask = code switch
+                    {
+                        TvKeyCode.DpadUp => _tvController.DpadUpAsync(),
+                        TvKeyCode.DpadDown => _tvController.DpadDownAsync(),
+                        TvKeyCode.DpadLeft => _tvController.DpadLeftAsync(),
+                        TvKeyCode.DpadRight => _tvController.DpadRightAsync(),
+                        TvKeyCode.DpadCenter => _tvController.SelectAsync(),
+                        TvKeyCode.Back => _tvController.BackAsync(),
+                        TvKeyCode.Home => _tvController.HomeAsync(),
+                        TvKeyCode.VolumeUp => _tvController.VolumeUpAsync(),
+                        TvKeyCode.VolumeDown => _tvController.VolumeDownAsync(),
+                        TvKeyCode.MediaPlayPause => _tvController.PlayPauseAsync(),
+                        _ => Task.CompletedTask
+                    };
+                    await dispatchTask;
+                    _lblTvStatus.Text = $"Command Sent: {label} (Key: {code})";
+                    _lblTvStatus.ForeColor = PeerlightTheme.StatusSuccess;
+                    return;
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    _lblTvStatus.Text = $"TV Command Failed: {label} ({ex.Message})";
+                    _lblTvStatus.ForeColor = PeerlightTheme.StatusDanger;
+                    return;
+                }
             }
-            _lblTvStatus.Text = $"Command Sent: {label} (Key: {code})";
+            _lblTvStatus.Text = $"Command Queued: {label} (Key: {code}) [TV Not Connected]";
+            _lblTvStatus.ForeColor = PeerlightTheme.StatusWarning;
         }
 
         private void BuildHistoryPage()
@@ -1025,7 +1076,7 @@ namespace ProjectName.Windows.UI
             var settingsCard = new Panel
             {
                 Location = new Point(0, 0),
-                Size = new Size(840, 480),
+                Size = new Size(840, 840),
                 BackColor = PeerlightTheme.SurfaceDark
             };
             settingsCard.Paint += (s, e) => PeerlightTheme.DrawCard(e.Graphics, new Rectangle(0, 0, settingsCard.Width - 1, settingsCard.Height - 1), 10);
@@ -1040,86 +1091,444 @@ namespace ProjectName.Windows.UI
             };
             settingsCard.Controls.Add(lblTitle);
 
-            // Group: Discovery & Network
-            var lblNet = new Label
+            int yOffset = 52;
+
+            // 1. Group: Appearance
+            var lblAppearance = new Label
             {
-                Text = "Local Network Discovery:",
+                Text = "1. Appearance & Visual Theme:",
                 Font = PeerlightTheme.FontSubheading,
                 ForeColor = PeerlightTheme.BrandCyan,
-                Location = new Point(24, 60),
+                Location = new Point(24, yOffset),
                 AutoSize = true
             };
-            settingsCard.Controls.Add(lblNet);
+            settingsCard.Controls.Add(lblAppearance);
+            yOffset += 26;
+
+            var rbDark = new RadioButton
+            {
+                Text = "Dark Mode (Deep Navy #071426)",
+                Checked = !string.Equals(_settings.ThemeMode, "Light", StringComparison.OrdinalIgnoreCase),
+                Font = PeerlightTheme.FontBody,
+                ForeColor = PeerlightTheme.TextPrimary,
+                Location = new Point(32, yOffset),
+                AutoSize = true
+            };
+            var rbLight = new RadioButton
+            {
+                Text = "Light Mode (Silver Clean #F5F7FA)",
+                Checked = string.Equals(_settings.ThemeMode, "Light", StringComparison.OrdinalIgnoreCase),
+                Font = PeerlightTheme.FontBody,
+                ForeColor = PeerlightTheme.TextPrimary,
+                Location = new Point(280, yOffset),
+                AutoSize = true
+            };
+            rbDark.CheckedChanged += (s, e) =>
+            {
+                if (rbDark.Checked)
+                {
+                    _settings.ThemeMode = "Dark";
+                    _settings.Save();
+                    ApplyTheme();
+                }
+            };
+            rbLight.CheckedChanged += (s, e) =>
+            {
+                if (rbLight.Checked)
+                {
+                    _settings.ThemeMode = "Light";
+                    _settings.Save();
+                    ApplyTheme();
+                }
+            };
+            settingsCard.Controls.Add(rbDark);
+            settingsCard.Controls.Add(rbLight);
+            yOffset += 40;
+
+            // 2. Group: Device Discovery & Local Network
+            var lblDiscovery = new Label
+            {
+                Text = "2. Device Discovery & Local Network:",
+                Font = PeerlightTheme.FontSubheading,
+                ForeColor = PeerlightTheme.BrandCyan,
+                Location = new Point(24, yOffset),
+                AutoSize = true
+            };
+            settingsCard.Controls.Add(lblDiscovery);
+            yOffset += 26;
 
             var chkMdns = new CheckBox
             {
                 Text = "Broadcast mDNS Beacon (_peerlight._tcp.local. on UDP 5353)",
-                Checked = true,
+                Checked = _settings.EnableMdns,
                 Font = PeerlightTheme.FontBody,
                 ForeColor = PeerlightTheme.TextPrimary,
-                Location = new Point(30, 90),
+                Location = new Point(32, yOffset),
                 AutoSize = true
             };
-            settingsCard.Controls.Add(chkMdns);
-
-            // Group: Video & Streaming Quality
-            var lblQuality = new Label
+            chkMdns.CheckedChanged += async (s, e) =>
             {
-                Text = "Display & Streaming Quality:",
+                _settings.EnableMdns = chkMdns.Checked;
+                _settings.Save();
+                if (chkMdns.Checked && _endpoint != null && _beacon == null)
+                {
+                    _beacon = new MdnsDiscoveryBeacon(_endpoint.SessionCoordinator.LocalDevicePayload);
+                    await _beacon.StartAsync();
+                }
+                else if (!chkMdns.Checked && _beacon != null)
+                {
+                    await _beacon.DisposeAsync();
+                    _beacon = null;
+                }
+            };
+            settingsCard.Controls.Add(chkMdns);
+            yOffset += 38;
+
+            // 3. Group: Network Configuration
+            var lblNetwork = new Label
+            {
+                Text = "3. Network Configuration & Endpoints:",
                 Font = PeerlightTheme.FontSubheading,
                 ForeColor = PeerlightTheme.BrandCyan,
-                Location = new Point(24, 140),
+                Location = new Point(24, yOffset),
+                AutoSize = true
+            };
+            settingsCard.Controls.Add(lblNetwork);
+            yOffset += 26;
+
+            var lblControlPort = new Label { Text = "Control TLS Port:", Location = new Point(32, yOffset + 3), AutoSize = true, Font = PeerlightTheme.FontCaption, ForeColor = PeerlightTheme.TextSecondary };
+            var txtControlPort = new TextBox { Text = _settings.ControlPort.ToString(), Location = new Point(140, yOffset), Size = new Size(70, 24), BackColor = PeerlightTheme.SurfaceElevated, ForeColor = PeerlightTheme.TextPrimary };
+            txtControlPort.TextChanged += (s, e) =>
+            {
+                if (int.TryParse(txtControlPort.Text, out int cp) && cp > 0 && cp < 65536)
+                {
+                    _settings.ControlPort = cp;
+                    _settings.Save();
+                }
+            };
+            var lblTvPort = new Label { Text = "Google TV Port:", Location = new Point(240, yOffset + 3), AutoSize = true, Font = PeerlightTheme.FontCaption, ForeColor = PeerlightTheme.TextSecondary };
+            var txtTvPort = new TextBox { Text = _settings.TvPort.ToString(), Location = new Point(340, yOffset), Size = new Size(70, 24), BackColor = PeerlightTheme.SurfaceElevated, ForeColor = PeerlightTheme.TextPrimary };
+            txtTvPort.TextChanged += (s, e) =>
+            {
+                if (int.TryParse(txtTvPort.Text, out int tp) && tp > 0 && tp < 65536)
+                {
+                    _settings.TvPort = tp;
+                    _settings.Save();
+                }
+            };
+            var lblTvHost = new Label { Text = "Default TV IP:", Location = new Point(440, yOffset + 3), AutoSize = true, Font = PeerlightTheme.FontCaption, ForeColor = PeerlightTheme.TextSecondary };
+            var txtTvHost = new TextBox { Text = _settings.DefaultTvHost, Location = new Point(530, yOffset), Size = new Size(130, 24), BackColor = PeerlightTheme.SurfaceElevated, ForeColor = PeerlightTheme.TextPrimary };
+            txtTvHost.TextChanged += (s, e) =>
+            {
+                _settings.DefaultTvHost = txtTvHost.Text.Trim();
+                _settings.Save();
+            };
+            settingsCard.Controls.Add(lblControlPort);
+            settingsCard.Controls.Add(txtControlPort);
+            settingsCard.Controls.Add(lblTvPort);
+            settingsCard.Controls.Add(txtTvPort);
+            settingsCard.Controls.Add(lblTvHost);
+            settingsCard.Controls.Add(txtTvHost);
+            yOffset += 40;
+
+            // 4. Group: Pairing & Cryptographic Security
+            var lblSecurity = new Label
+            {
+                Text = "4. Pairing & Cryptographic Security Policy:",
+                Font = PeerlightTheme.FontSubheading,
+                ForeColor = PeerlightTheme.BrandCyan,
+                Location = new Point(24, yOffset),
+                AutoSize = true
+            };
+            settingsCard.Controls.Add(lblSecurity);
+            yOffset += 26;
+
+            var lblPinExp = new Label { Text = "PIN Expiration:", Location = new Point(32, yOffset + 3), AutoSize = true, Font = PeerlightTheme.FontCaption, ForeColor = PeerlightTheme.TextSecondary };
+            var cmbPinExp = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Location = new Point(130, yOffset), Size = new Size(120, 24), BackColor = PeerlightTheme.SurfaceElevated, ForeColor = PeerlightTheme.TextPrimary };
+            cmbPinExp.Items.AddRange(new object[] { "30 Seconds", "60 Seconds", "120 Seconds", "300 Seconds" });
+            cmbPinExp.SelectedIndex = _settings.PinExpirySeconds switch { 30 => 0, 120 => 2, 300 => 3, _ => 1 };
+            cmbPinExp.SelectedIndexChanged += (s, e) =>
+            {
+                _settings.PinExpirySeconds = cmbPinExp.SelectedIndex switch { 0 => 30, 2 => 120, 3 => 300, _ => 60 };
+                _settings.Save();
+            };
+            var chkMutual = new CheckBox
+            {
+                Text = "Require mutual 6-digit cryptographic PIN for all incoming connections",
+                Checked = _settings.RequireMutualPairing,
+                Font = PeerlightTheme.FontBody,
+                ForeColor = PeerlightTheme.TextPrimary,
+                Location = new Point(270, yOffset + 2),
+                AutoSize = true
+            };
+            chkMutual.CheckedChanged += (s, e) =>
+            {
+                _settings.RequireMutualPairing = chkMutual.Checked;
+                _settings.Save();
+            };
+            settingsCard.Controls.Add(lblPinExp);
+            settingsCard.Controls.Add(cmbPinExp);
+            settingsCard.Controls.Add(chkMutual);
+            yOffset += 40;
+
+            // 5. Group: Input Behavior
+            var lblInput = new Label
+            {
+                Text = "5. Input Behavior & Pointer Mapping:",
+                Font = PeerlightTheme.FontSubheading,
+                ForeColor = PeerlightTheme.BrandCyan,
+                Location = new Point(24, yOffset),
+                AutoSize = true
+            };
+            settingsCard.Controls.Add(lblInput);
+            yOffset += 26;
+
+            var lblSens = new Label { Text = "Pointer Sensitivity:", Location = new Point(32, yOffset + 3), AutoSize = true, Font = PeerlightTheme.FontCaption, ForeColor = PeerlightTheme.TextSecondary };
+            var cmbSens = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Location = new Point(150, yOffset), Size = new Size(110, 24), BackColor = PeerlightTheme.SurfaceElevated, ForeColor = PeerlightTheme.TextPrimary };
+            cmbSens.Items.AddRange(new object[] { "Slow", "Normal", "Fast" });
+            cmbSens.SelectedItem = _settings.PointerSensitivity;
+            if (cmbSens.SelectedIndex < 0) cmbSens.SelectedIndex = 1;
+            cmbSens.SelectedIndexChanged += (s, e) =>
+            {
+                _settings.PointerSensitivity = cmbSens.SelectedItem?.ToString() ?? "Normal";
+                _settings.Save();
+            };
+            var chkInvert = new CheckBox
+            {
+                Text = "Invert vertical scroll wheel",
+                Checked = _settings.InvertScrollWheel,
+                Font = PeerlightTheme.FontBody,
+                ForeColor = PeerlightTheme.TextPrimary,
+                Location = new Point(280, yOffset + 2),
+                AutoSize = true
+            };
+            chkInvert.CheckedChanged += (s, e) =>
+            {
+                _settings.InvertScrollWheel = chkInvert.Checked;
+                _settings.Save();
+            };
+            var chkFocusLoss = new CheckBox
+            {
+                Text = "Release held inputs on window focus loss",
+                Checked = _settings.ReleaseInputsOnFocusLoss,
+                Font = PeerlightTheme.FontBody,
+                ForeColor = PeerlightTheme.TextPrimary,
+                Location = new Point(480, yOffset + 2),
+                AutoSize = true
+            };
+            chkFocusLoss.CheckedChanged += (s, e) =>
+            {
+                _settings.ReleaseInputsOnFocusLoss = chkFocusLoss.Checked;
+                _settings.Save();
+            };
+            settingsCard.Controls.Add(lblSens);
+            settingsCard.Controls.Add(cmbSens);
+            settingsCard.Controls.Add(chkInvert);
+            settingsCard.Controls.Add(chkFocusLoss);
+            yOffset += 40;
+
+            // 6. Group: Display & Streaming Quality
+            var lblQuality = new Label
+            {
+                Text = "6. Display & Streaming Quality (Bounded Real-Time Pipeline):",
+                Font = PeerlightTheme.FontSubheading,
+                ForeColor = PeerlightTheme.BrandCyan,
+                Location = new Point(24, yOffset),
                 AutoSize = true
             };
             settingsCard.Controls.Add(lblQuality);
+            yOffset += 26;
 
-            var chkFps = new CheckBox
+            var lblFps = new Label { Text = "Target Frame Rate:", Location = new Point(32, yOffset + 3), AutoSize = true, Font = PeerlightTheme.FontCaption, ForeColor = PeerlightTheme.TextSecondary };
+            var cmbFps = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Location = new Point(150, yOffset), Size = new Size(110, 24), BackColor = PeerlightTheme.SurfaceElevated, ForeColor = PeerlightTheme.TextPrimary };
+            cmbFps.Items.AddRange(new object[] { "30 FPS", "60 FPS" });
+            cmbFps.SelectedIndex = _settings.TargetFps >= 60 ? 1 : 0;
+            cmbFps.SelectedIndexChanged += (s, e) =>
             {
-                Text = "Target 30 FPS baseline (bounded frame queue = 2 frames)",
-                Checked = true,
-                Font = PeerlightTheme.FontBody,
-                ForeColor = PeerlightTheme.TextPrimary,
-                Location = new Point(30, 170),
-                AutoSize = true
+                _settings.TargetFps = cmbFps.SelectedIndex == 1 ? 60 : 30;
+                _settings.Save();
             };
-            settingsCard.Controls.Add(chkFps);
-
             var chkDropStale = new CheckBox
             {
-                Text = "Drop stale unrendered frames under network congestion (Preserve < 100 ms latency)",
-                Checked = true,
+                Text = "Drop stale unrendered frames under congestion (Preserve < 100 ms latency)",
+                Checked = _settings.DropStaleFrames,
                 Font = PeerlightTheme.FontBody,
                 ForeColor = PeerlightTheme.TextPrimary,
-                Location = new Point(30, 200),
+                Location = new Point(280, yOffset + 2),
                 AutoSize = true
             };
+            chkDropStale.CheckedChanged += (s, e) =>
+            {
+                _settings.DropStaleFrames = chkDropStale.Checked;
+                _settings.Save();
+            };
+            settingsCard.Controls.Add(lblFps);
+            settingsCard.Controls.Add(cmbFps);
             settingsCard.Controls.Add(chkDropStale);
+            yOffset += 40;
 
-            // Group: Zero-Recording Safety Invariant
+            // 7. Group: Notifications & Startup Behavior
+            var lblNotify = new Label
+            {
+                Text = "7. Notifications & Windows Startup Behavior:",
+                Font = PeerlightTheme.FontSubheading,
+                ForeColor = PeerlightTheme.BrandCyan,
+                Location = new Point(24, yOffset),
+                AutoSize = true
+            };
+            settingsCard.Controls.Add(lblNotify);
+            yOffset += 26;
+
+            var chkNotify = new CheckBox
+            {
+                Text = "Show desktop toast notifications for connection events",
+                Checked = _settings.ShowDesktopNotifications,
+                Font = PeerlightTheme.FontBody,
+                ForeColor = PeerlightTheme.TextPrimary,
+                Location = new Point(32, yOffset),
+                AutoSize = true
+            };
+            chkNotify.CheckedChanged += (s, e) =>
+            {
+                _settings.ShowDesktopNotifications = chkNotify.Checked;
+                _settings.Save();
+            };
+            var chkMin = new CheckBox
+            {
+                Text = "Start Peerlight minimized to system tray",
+                Checked = _settings.StartMinimized,
+                Font = PeerlightTheme.FontBody,
+                ForeColor = PeerlightTheme.TextPrimary,
+                Location = new Point(380, yOffset),
+                AutoSize = true
+            };
+            chkMin.CheckedChanged += (s, e) =>
+            {
+                _settings.StartMinimized = chkMin.Checked;
+                _settings.Save();
+            };
+            settingsCard.Controls.Add(chkNotify);
+            settingsCard.Controls.Add(chkMin);
+            yOffset += 40;
+
+            // 8. Group: Privacy & Zero-Disk Storage Guarantee
             var lblSafety = new Label
             {
-                Text = "Privacy & Zero-Disk Storage Guarantee:",
+                Text = "8. Non-Negotiable Privacy Invariant:",
                 Font = PeerlightTheme.FontSubheading,
                 ForeColor = PeerlightTheme.StatusSuccess,
-                Location = new Point(24, 250),
+                Location = new Point(24, yOffset),
                 AutoSize = true
             };
             settingsCard.Controls.Add(lblSafety);
+            yOffset += 24;
 
             var lblSafetyNotice = new Label
             {
-                Text = "Peerlight is strictly architected for live viewing and remote interaction. " +
-                       "Disk capture, automated screenshot archiving, session recording, and replay are permanently prohibited. " +
-                       "All transmitted frames are held only in temporary, bounded in-memory buffers and immediately discarded.",
-                Font = PeerlightTheme.FontBody,
+                Text = "Zero Disk Storage Guarantee: Video frames exist strictly in bounded in-memory ring buffers (capacity = 2) and are discarded immediately upon transmission. Automated screen recording, persistent screenshots, and background captures are permanently prohibited.",
+                Font = PeerlightTheme.FontCaption,
                 ForeColor = PeerlightTheme.TextSecondary,
-                Location = new Point(30, 280),
-                Size = new Size(760, 50)
+                Location = new Point(32, yOffset),
+                Size = new Size(760, 36)
             };
             settingsCard.Controls.Add(lblSafetyNotice);
+            yOffset += 44;
+
+            // 9. Group: Diagnostics & Persistence Actions
+            var lblActions = new Label
+            {
+                Text = "9. Settings Actions & Diagnostics:",
+                Font = PeerlightTheme.FontSubheading,
+                ForeColor = PeerlightTheme.BrandCyan,
+                Location = new Point(24, yOffset),
+                AutoSize = true
+            };
+            settingsCard.Controls.Add(lblActions);
+            yOffset += 26;
+
+            var btnSaveNow = new PeerlightButton
+            {
+                Text = "Save Settings",
+                Variant = ButtonVariant.Primary,
+                Location = new Point(32, yOffset),
+                Size = new Size(130, 34)
+            };
+            btnSaveNow.Click += (s, e) =>
+            {
+                _settings.Save();
+                MessageBox.Show(this, "Peerlight preferences saved to peerlight-settings.json successfully.", "Settings Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            };
+            settingsCard.Controls.Add(btnSaveNow);
+
+            var btnResetDefaults = new PeerlightButton
+            {
+                Text = "Reset Defaults",
+                Variant = ButtonVariant.Secondary,
+                Location = new Point(175, yOffset),
+                Size = new Size(130, 34)
+            };
+            btnResetDefaults.Click += (s, e) =>
+            {
+                if (MessageBox.Show(this, "Reset all settings to default values?", "Confirm Reset", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                {
+                    _settings = new PeerlightSettings();
+                    _settings.Save();
+                    ApplyTheme();
+                    BuildPages();
+                    SwitchPage(5);
+                }
+            };
+            settingsCard.Controls.Add(btnResetDefaults);
+
+            var btnExportDiag = new PeerlightButton
+            {
+                Text = "Export Diagnostics",
+                Variant = ButtonVariant.Ghost,
+                Location = new Point(320, yOffset),
+                Size = new Size(150, 34)
+            };
+            btnExportDiag.Click += (s, e) =>
+            {
+                string report = $"PEERLIGHT DIAGNOSTIC SNAPSHOT\nGenerated: {DateTime.UtcNow:O}\nTheme: {_settings.ThemeMode}\nControl Port: {_settings.ControlPort}\nTV Port: {_settings.TvPort}\nmDNS: {_settings.EnableMdns}\nFPS Target: {_settings.TargetFps}\nZero Storage Invariant: {_settings.ZeroRecordingEnforced}\nEndpoint Running: {_endpoint?.IsRunning}";
+                Clipboard.SetText(report);
+                MessageBox.Show(this, "Diagnostic report copied to clipboard!\n\n" + report, "Diagnostics Exported", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            };
+            settingsCard.Controls.Add(btnExportDiag);
 
             _settingsPage.Controls.Add(settingsCard);
             _contentPanel.Controls.Add(_settingsPage);
+        }
+
+        private void ApplyTheme()
+        {
+            PeerlightTheme.IsDarkMode = !string.Equals(_settings.ThemeMode, "Light", StringComparison.OrdinalIgnoreCase);
+            BackColor = PeerlightTheme.NavyBg;
+            ForeColor = PeerlightTheme.TextPrimary;
+
+            if (_sidebarPanel != null) _sidebarPanel.BackColor = PeerlightTheme.SurfaceDark;
+            if (_headerPanel != null) _headerPanel.BackColor = PeerlightTheme.NavyBg;
+            if (_contentPanel != null) _contentPanel.BackColor = PeerlightTheme.NavyBg;
+
+            if (_homePage != null) _homePage.BackColor = PeerlightTheme.NavyBg;
+            if (_devicesPage != null) _devicesPage.BackColor = PeerlightTheme.NavyBg;
+            if (_sessionsPage != null) _sessionsPage.BackColor = PeerlightTheme.NavyBg;
+            if (_remoteControlPage != null) _remoteControlPage.BackColor = PeerlightTheme.NavyBg;
+            if (_historyPage != null) _historyPage.BackColor = PeerlightTheme.NavyBg;
+            if (_settingsPage != null) _settingsPage.BackColor = PeerlightTheme.NavyBg;
+            if (_aboutPage != null) _aboutPage.BackColor = PeerlightTheme.NavyBg;
+
+            if (_pageTitleLabel != null) _pageTitleLabel.ForeColor = PeerlightTheme.TextPrimary;
+            if (_pageSubtitleLabel != null) _pageSubtitleLabel.ForeColor = PeerlightTheme.TextSecondary;
+            if (_networkBadge != null) _networkBadge.BackColor = PeerlightTheme.SurfaceElevated;
+
+            for (int i = 0; i < _navButtons.Count; i++)
+            {
+                bool active = (i == _currentNavIndex);
+                _navButtons[i].BackColor = active ? PeerlightTheme.SurfaceElevated : Color.Transparent;
+                _navButtons[i].ForeColor = active ? PeerlightTheme.BrandCyan : PeerlightTheme.TextSecondary;
+            }
+
+            Invalidate(true);
         }
 
         private void BuildAboutPage()

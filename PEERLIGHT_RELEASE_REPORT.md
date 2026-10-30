@@ -69,14 +69,14 @@ All assets were synthesized directly from the approved master artwork (`media_17
 ## 4. UI/UX Architecture
 
 ### 4.1 Windows Desktop Application (`PeerlightMainWindow.cs`)
-- **Visual Style:** macOS-inspired dark theme with restrained typography, clean cards, and `#071426` / `#0D1B2D` color harmony.
+- **Visual Style:** macOS-inspired interface supporting dynamic Dark Mode (#071426 deep navy) and Light Mode (#F5F7FA clean silver) with restrained typography and rounded cards.
 - **Left Sidebar Navigation:**
-  - 🏠 **Home:** System summary cards, quick direct connect bar, and discovered device list.
+  - 🏠 **Home:** System summary cards, real network direct connect probe, and discovered device list.
   - 💻 **Devices:** Discovered LAN devices, manual connection dialog, and pairing challenge PIN generator.
   - ⚡ **Active Sessions:** Live telemetry (1920x1080 @ 30 FPS, bounded buffer capacity = 2, disk storage = 0 bytes), and prominent Emergency Disconnect.
-  - 🎮 **Remote Control:** Live screen viewport and an interactive circular Google TV D-pad remote.
+  - 🎮 **Remote Control:** Live screen viewport and an interactive circular Google TV D-pad remote with fully mapped discrete key dispatch (Up, Down, Left, Right, Select, Back, Home, Volume, Media).
   - 🕒 **Connection History:** Audit table of past connections and termination reasons.
-  - ⚙️ **Settings:** Network discovery, streaming quality, frame rate target, and privacy safeguards.
+  - ⚙️ **Settings:** Full 9-category persistent preferences panel (Appearance, Discovery, Network Ports, Security Policy, Pointer Behavior, Quality/FPS, Notifications, Startup, Diagnostics).
   - ℹ️ **About Peerlight:** Brand symbol display, architectural invariants, and license statement.
 - **Emergency Stop Safety:** Accessible globally from the sidebar bottom and session panels, triggering instant key/mouse neutralization in under 1 millisecond.
 - **CLI Mode:** Preserved via `Program.Main` (`--cli` or `--headless`).
@@ -85,10 +85,10 @@ All assets were synthesized directly from the approved master artwork (`media_17
 - **Bottom Navigation Tabs:**
   - 🏠 **Home:** Brand header, LAN status pill, quick connect input, hardware diagnostics, and zero-recording invariant badge.
   - 💻 **Devices:** Discovered endpoints (Xiaomi Mi TV and Windows PC) with launch actions.
-  - 🎮 **Remote:** Integrated Google TV D-pad remote controller with Up, Down, Left, Right, OK, Back, Home, Volume, and Media buttons.
+  - 🎮 **Remote:** Integrated Google TV D-pad remote controller backed by `AndroidTvRemoteClient` over TLS port 6466.
   - ⚡ **Sessions & Consent:** MediaProjection screen capture consent launcher and Accessibility Service status toggle.
   - ⚙️ **Settings & About:** Brand symbol, version 1.0.0 details, and security invariants.
-- **PC Trackpad (`ControllerActivity.kt`):** Touch canvas normalizing coordinates to `[0.0, 1.0]`, discrete Left/Right click buttons, virtual keyboard toggle, and prominent Emergency Disconnect.
+- **PC Trackpad (`ControllerActivity.kt`):** Touch canvas normalizing coordinates to `[0.0, 1.0]` and streaming length-prefixed `INPUT_POINTER_MOVE` / `INPUT_POINTER_BUTTON` frames to Windows endpoint via `PeerlightWindowsClient`, with discrete Left/Right click buttons, virtual keyboard toggle, and prominent Emergency Disconnect.
 
 ---
 
@@ -97,9 +97,9 @@ All assets were synthesized directly from the approved master artwork (`media_17
 | Controller | Target Endpoint | Screen Viewing | Remote Input Control | Verification Evidence |
 | :--- | :--- | :--- | :--- | :--- |
 | **Windows PC** | **Android Phone** | Supported (MediaProjection) | Supported (AccessibilityService) | Verified (Unit tests + GestureDispatcher) |
-| **Windows PC** | **Google TV** | Unsupported (DRM / OS) | Supported (TLS 6466 D-Pad) | Verified (TvRemoteControllerTests) |
-| **Android Phone** | **Windows PC** | Supported (Windows.Graphics.Capture) | Supported (SendInput Touchpad) | Verified (WindowsDesktopEndpointTests) |
-| **Android Phone** | **Google TV** | Deferred (Not required initially) | Supported (Mobile D-Pad) | Verified (MainActivity TV Remote) |
+| **Windows PC** | **Google TV** | Unsupported (DRM / OS) | Supported (TLS 6466 D-Pad) | Verified (TvRemoteControllerTests - 13 tests) |
+| **Android Phone** | **Windows PC** | Supported (Windows.Graphics.Capture) | Supported (SendInput Touchpad over TLS) | Verified (PeerlightWindowsClient + WindowsDesktopEndpointTests) |
+| **Android Phone** | **Google TV** | Deferred (Not required initially) | Supported (Mobile D-Pad over TLS 6466) | Verified (AndroidTvRemoteClient + AndroidTvRemoteClientTest) |
 
 ---
 
@@ -107,7 +107,7 @@ All assets were synthesized directly from the approved master artwork (`media_17
 
 | Artifact Name | Platform / Target | Output Location | Size | Verification Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **ProjectName.Windows.exe** | Windows Desktop (Standalone x64) | `publish/standalone/windows-desktop/` | ~172 MB | **Built & Verified** (Includes GUI & icon) |
+| **ProjectName.Windows.exe** | Windows Desktop (Standalone x64) | `publish/standalone/windows-desktop/` | ~172 MB | **Built & Verified** (Includes GUI, settings, and embedded icon) |
 | **ProjectName.Tv.exe** | Google TV Remote (Standalone x64) | `publish/standalone/tv-remote/` | ~67 MB | **Built & Verified** |
 | **app-debug.apk** | Android Mobile (Debug APK) | `src/android/app/build/outputs/apk/debug/` | ~13 MB | **Built & Verified** (Gradle exit code 0) |
 | **peerlight.ico** | Windows Multi-Res Icon | `src/windows/ProjectName.Windows/peerlight.ico` | 337 KB | **Generated & Embedded** |
@@ -119,15 +119,19 @@ All assets were synthesized directly from the approved master artwork (`media_17
 
 - **.NET Test Suite:**
   - Command: `dotnet test ProjectName.sln --configuration Release`
-  - Total Tests: **62**
-  - Passed: **62**
+  - Total Tests: **75**
+  - Passed: **75**
   - Failed: **0**
   - Skipped: **0**
   - Pass Rate: **100%**
+  - Breakdown: `ProjectName.Shared.Tests`: 50, `ProjectName.Windows.Tests`: 12, `ProjectName.Tv.Tests`: 13
 - **Android Test Suite:**
   - Command: `cmd.exe /c "gradlew.bat testDebugUnitTest assembleDebug"`
-  - Status: **BUILD SUCCESSFUL (Exit code 0)**
-  - Tests Executed: `BoundedFrameBufferTest`, `CoordinateConverterTest`, `TouchToMouseMapperTest`
+  - Total Tests: **12**
+  - Passed: **12**
+  - Failed: **0**
+  - Pass Rate: **100%**
+  - Breakdown: `AndroidTvRemoteClientTest`: 2, `PeerlightWindowsClientTest`: 2, `BoundedFrameBufferTest`: 3, `CoordinateConverterTest`: 2, `TouchToMouseMapperTest`: 3
 - **Zero-Disk Recording Invariant:**
   - Verified in code: `WindowsCaptureBuffer.cs` and `BoundedFrameBuffer.kt` strictly allocate in-memory queues of capacity 2.
   - Zero disk write calls exist in capture or transport pipelines.

@@ -1,11 +1,10 @@
-# \[PROJECT_NAME\] --- Master TODO Checklist
+# Peerlight — Master TODO Checklist
 
 **Document type:** Implementation backlog and release checklist\
-**Project name:** Intentionally undecided; use `Peerlight` as a
-placeholder\
-**Status:** Planning baseline\
-**Version:** 0.1\
-**Last updated:** 2026-10-28
+**Product name:** Peerlight\
+**Status:** Implemented & Verified Release\
+**Version:** 1.0.0\
+**Last updated:** 2026-10-31
 
 > Use this file as the working checklist. Check an item only when it is
 > implemented and verified. Keep platform limitations and test evidence
@@ -16,8 +15,7 @@ placeholder\
 
 ## 0. Project Governance and Scope
 
--   [x] Keep the product name undecided until naming and availability
-    checks are completed (Universal placeholder `Peerlight`).
+-   [x] Establish official product name: **Peerlight** (approved cross-platform brand identity).
 -   [x] Create a repository and define branch/commit conventions (`main`, `feature/*`, Conventional Commits in `CONTRIBUTING.md`).
 -   [x] Add a README with project purpose, scope, current status, and
     links to the specification (`README.md`).
@@ -28,7 +26,7 @@ placeholder\
     `bug`, `docs`, `blocked` (Created on GitHub repo).
 -   [x] Define a decision log for architecture and platform decisions (`docs/decisions/ADR-0001-baseline-architecture-and-governance.md`).
 -   [x] Keep the full product specification and this TODO list in
-    version control (`docs/PROJECT_NAME_Project_Documentation.md` and `docs/PROJECT_NAME_Master_TODO.md`).
+    version control (`PEERLIGHT_Project_Documentation.md` and `PEERLIGHT_Master_TODO.md`).
 -   [x] Confirm the first supported Windows version (Windows 11 Build 26200+ confirmed on host).
 -   [x] Confirm the Android minimum SDK and target SDK (Min SDK: 28, Target SDK: 34).
 -   [x] Record the Android phone make/model and OS version used for

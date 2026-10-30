@@ -36,12 +36,12 @@ All verification records are anchored to physical hardware targets established d
 | **Android Phone** | **Windows PC** | Discovery | Multicast query & beacon response | **VERIFIED** | `MdnsDiscoveryBeacon.cs` |
 | **Android Phone** | **Windows PC** | Pairing | Cryptographic PIN confirmation | **VERIFIED** | `ProtocolTests.cs`, `SessionCoordinator.cs` |
 | **Android Phone** | **Windows PC** | Screen Viewing | `Windows.Graphics.Capture` / DXGI Duplication | **VERIFIED** | `WindowsCaptureBufferTests.cs` |
-| **Android Phone** | **Windows PC** | Remote Input | Touchscreen mapped to Windows `SendInput` | **VERIFIED** | `TouchToMouseMapperTest.kt`, `WindowsInputInjector.cs` |
+| **Android Phone** | **Windows PC** | Remote Input | Touchscreen mapped to Windows `SendInput` over TLS | **VERIFIED** | `PeerlightWindowsClient.kt`, `TouchToMouseMapperTest.kt`, `PeerlightWindowsClientTest.kt` |
 | **Android Phone** | **Windows PC** | Disconnect Safety | Floating emergency stop releases all held keys | **VERIFIED** | `ControllerActivity.kt`, `WindowsDesktopEndpoint.cs` |
-| **Android Phone** | **Google TV** | Discovery | Target IP probe (`192.168.254.104:6466`) | **VERIFIED** | `GoogleTvRemoteClient.cs` |
+| **Android Phone** | **Google TV** | Discovery | Target IP probe (`192.168.254.104:6466`) | **VERIFIED** | `GoogleTvRemoteClient.cs`, `AndroidTvRemoteClient.kt` |
 | **Android Phone** | **Google TV** | Screen Viewing | Live TV Screen Stream | **NOT REQUIRED INITIALLY** | Deferred in accordance with PRD Section 1.4 |
-| **Android Phone** | **Google TV** | Remote Control | Interactive Mobile D-Pad (Up, Down, Left, Right, OK)| **VERIFIED** | `MainActivity.kt` (`setupTvRemoteControls()`) |
-| **Android Phone** | **Google TV** | Navigation / Media | Back, Home, Volume +, Volume -, Play/Pause | **VERIFIED** | `MainActivity.kt`, `activity_main.xml` |
+| **Android Phone** | **Google TV** | Remote Control | Interactive Mobile D-Pad (Up, Down, Left, Right, OK) over TLS | **VERIFIED** | `MainActivity.kt`, `AndroidTvRemoteClient.kt`, `AndroidTvRemoteClientTest.kt` |
+| **Android Phone** | **Google TV** | Navigation / Media | Back, Home, Volume +, Volume -, Play/Pause | **VERIFIED** | `MainActivity.kt`, `AndroidTvRemoteClient.kt` |
 
 ---
 
@@ -60,12 +60,14 @@ All verification records are anchored to physical hardware targets established d
 ## 4. Test Execution Summary
 
 - **.NET Unit Test Suite (`dotnet test`):**
-  - `ProjectName.Tv.Tests`: 3 Passed, 0 Failed, 0 Skipped (100%)
+  - `ProjectName.Tv.Tests`: 13 Passed, 0 Failed, 0 Skipped (100%)
   - `ProjectName.Shared.Tests`: 50 Passed, 0 Failed, 0 Skipped (100%)
-  - `ProjectName.Windows.Tests`: 9 Passed, 0 Failed, 0 Skipped (100%)
-  - **Total .NET Tests:** **62 Passed, 0 Failed (100% Pass Rate)**
+  - `ProjectName.Windows.Tests`: 12 Passed, 0 Failed, 0 Skipped (100%)
+  - **Total .NET Tests:** **75 Passed, 0 Failed (100% Pass Rate)**
 - **Android Unit Test Suite (`gradlew.bat testDebugUnitTest`):**
-  - `BoundedFrameBufferTest`: Passed
-  - `CoordinateConverterTest`: Passed
-  - `TouchToMouseMapperTest`: Passed
-  - **Total Android Tests:** **Passed (Build Exit Code 0)**
+  - `AndroidTvRemoteClientTest`: 2 Passed
+  - `PeerlightWindowsClientTest`: 2 Passed
+  - `BoundedFrameBufferTest`: 3 Passed
+  - `CoordinateConverterTest`: 2 Passed
+  - `TouchToMouseMapperTest`: 3 Passed
+  - **Total Android Tests:** **12 Passed, 0 Failed (100% Pass Rate, Build Exit Code 0)**

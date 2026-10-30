@@ -21,17 +21,21 @@ project-name/
 ├── docs/
 │   ├── decisions/                              # Architecture Decision Records (ADRs 0001-0003)
 │   ├── FEASIBILITY_REPORT.md                   # Hardware & protocol feasibility report
-│   ├── PROJECT_NAME_Master_TODO.md             # Planning & task checklist
-│   ├── PROJECT_NAME_Project_Documentation.md   # Core requirements and PRD
+│   ├── PEERLIGHT_Master_TODO.md                # Planning & task checklist
+│   ├── PEERLIGHT_Project_Documentation.md      # Core requirements and PRD
+│   ├── PEERLIGHT_DESIGN_SYSTEM.md              # Shared visual design system
+│   ├── BRAND_GUIDELINES.md                     # Brand assets and token guidelines
+│   ├── FEATURE_VERIFICATION_MATRIX.md          # Multi-platform interaction matrix
+│   ├── BUILD_AND_RELEASE.md                    # Build engineering instructions
 │   └── PROTOCOL_SPEC.md                        # Network protocol & message envelope spec
-├── publish/                                    # Existing published binaries
+├── publish/                                    # Published binaries
 │   ├── standalone/                             # Self-contained single-file executables (.NET 8 win-x64)
 │   ├── tv-remote/                              # Framework-dependent Google TV remote CLI
 │   └── windows-app/                            # Framework-dependent Windows desktop CLI
 ├── src/
 │   ├── android/                                # Android mobile client & endpoint (Kotlin, AGP 8.5, SDK 34)
-│   │   ├── app/src/main/kotlin/                # MediaProjection, AccessibilityService, TouchToMouseMapper
-│   │   └── app/src/main/res/                   # Layouts, values, strings, XML configs
+│   │   ├── app/src/main/kotlin/                # MediaProjection, AccessibilityService, TvRemoteClient, WindowsClient
+│   │   └── app/src/main/res/                   # Layouts, values, strings, XML configs, adaptive icons
 │   ├── shared/
 │   │   └── ProjectName.Shared/                 # C# .NET 8 core library (Protocol, TLS, mDNS, Pairing, Media)
 │   ├── tv/
@@ -40,8 +44,8 @@ project-name/
 │       └── ProjectName.Windows/                # C# .NET 8 Windows desktop endpoint & input injector
 ├── tests/
 │   ├── shared/ProjectName.Shared.Tests/        # 50 unit tests (Protocol, Transport, Session, Discovery, Media)
-│   ├── tv/ProjectName.Tv.Tests/                # 3 unit tests (TvRemoteController commands & ping)
-│   └── windows/ProjectName.Windows.Tests/      # 9 unit tests (WindowsDesktopEndpoint & CaptureBuffer)
+│   ├── tv/ProjectName.Tv.Tests/                # 13 unit tests (TvRemoteController commands, ping, wire encoding)
+│   └── windows/ProjectName.Windows.Tests/      # 12 unit tests (Endpoint, CaptureBuffer, Settings, Theme Mode)
 ├── CONTRIBUTING.md                             # Branching and commit standards
 ├── LICENSE                                     # MIT License
 ├── ProjectName.sln                             # Visual Studio / .NET solution

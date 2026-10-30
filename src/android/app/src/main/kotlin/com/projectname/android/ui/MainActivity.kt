@@ -15,10 +15,13 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.projectname.android.R
 import com.projectname.android.accessibility.ProjectNameAccessibilityService
 import com.projectname.android.capture.MediaProjectionCaptureService
+import com.projectname.android.tv.AndroidTvRemoteClient
+import kotlinx.coroutines.launch
 
 /**
  * Peerlight Android Main Hub Activity.
@@ -26,6 +29,8 @@ import com.projectname.android.capture.MediaProjectionCaptureService
  * MediaProjection zero-recording capture consent, and hardware diagnostics.
  */
 class MainActivity : AppCompatActivity() {
+
+    private val tvClient = AndroidTvRemoteClient()
 
     private lateinit var tvDiagnostics: TextView
     private lateinit var tvAccessibilityStatus: TextView
@@ -193,21 +198,39 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupTvRemoteControls() {
-        fun sendTvKey(label: String) {
-            tvTvStatusLabel.text = "Command Sent: $label"
-            Toast.makeText(this, "TV Key: $label", Toast.LENGTH_SHORT).show()
+        fun dispatchTvKey(keyCode: Int, label: String) {
+            val targetHost = etTargetIp.text.toString().trim().ifEmpty { "192.168.254.104" }
+            tvTvStatusLabel.text = "Sending: $label to $targetHost..."
+
+            lifecycleScope.launch {
+                if (!tvClient.isConnected || tvClient.connectedHost != targetHost) {
+                    val connectResult = tvClient.connect(targetHost)
+                    if (connectResult.isFailure) {
+                        tvTvStatusLabel.text = "TV Offline: ${connectResult.exceptionOrNull()?.message}"
+                        Toast.makeText(this@MainActivity, "Could not reach TV at $targetHost:6466", Toast.LENGTH_SHORT).show()
+                        return@launch
+                    }
+                }
+
+                val sendResult = tvClient.sendKeyClick(keyCode)
+                if (sendResult.isSuccess) {
+                    tvTvStatusLabel.text = "Command Sent: $label (Connected)"
+                } else {
+                    tvTvStatusLabel.text = "TV Error: ${sendResult.exceptionOrNull()?.message}"
+                }
+            }
         }
 
-        findViewById<Button>(R.id.btnTvUp).setOnClickListener { sendTvKey("D-Pad Up") }
-        findViewById<Button>(R.id.btnTvDown).setOnClickListener { sendTvKey("D-Pad Down") }
-        findViewById<Button>(R.id.btnTvLeft).setOnClickListener { sendTvKey("D-Pad Left") }
-        findViewById<Button>(R.id.btnTvRight).setOnClickListener { sendTvKey("D-Pad Right") }
-        findViewById<Button>(R.id.btnTvOk).setOnClickListener { sendTvKey("Select / OK") }
-        findViewById<Button>(R.id.btnTvBack).setOnClickListener { sendTvKey("Back") }
-        findViewById<Button>(R.id.btnTvHome).setOnClickListener { sendTvKey("Home") }
-        findViewById<Button>(R.id.btnTvVolUp).setOnClickListener { sendTvKey("Volume +") }
-        findViewById<Button>(R.id.btnTvVolDown).setOnClickListener { sendTvKey("Volume -") }
-        findViewById<Button>(R.id.btnTvPlayPause).setOnClickListener { sendTvKey("Play/Pause") }
+        findViewById<Button>(R.id.btnTvUp).setOnClickListener { dispatchTvKey(AndroidTvRemoteClient.KEY_DPAD_UP, "D-Pad Up") }
+        findViewById<Button>(R.id.btnTvDown).setOnClickListener { dispatchTvKey(AndroidTvRemoteClient.KEY_DPAD_DOWN, "D-Pad Down") }
+        findViewById<Button>(R.id.btnTvLeft).setOnClickListener { dispatchTvKey(AndroidTvRemoteClient.KEY_DPAD_LEFT, "D-Pad Left") }
+        findViewById<Button>(R.id.btnTvRight).setOnClickListener { dispatchTvKey(AndroidTvRemoteClient.KEY_DPAD_RIGHT, "D-Pad Right") }
+        findViewById<Button>(R.id.btnTvOk).setOnClickListener { dispatchTvKey(AndroidTvRemoteClient.KEY_DPAD_CENTER, "Select / OK") }
+        findViewById<Button>(R.id.btnTvBack).setOnClickListener { dispatchTvKey(AndroidTvRemoteClient.KEY_BACK, "Back") }
+        findViewById<Button>(R.id.btnTvHome).setOnClickListener { dispatchTvKey(AndroidTvRemoteClient.KEY_HOME, "Home") }
+        findViewById<Button>(R.id.btnTvVolUp).setOnClickListener { dispatchTvKey(AndroidTvRemoteClient.KEY_VOLUME_UP, "Volume +") }
+        findViewById<Button>(R.id.btnTvVolDown).setOnClickListener { dispatchTvKey(AndroidTvRemoteClient.KEY_VOLUME_DOWN, "Volume -") }
+        findViewById<Button>(R.id.btnTvPlayPause).setOnClickListener { dispatchTvKey(AndroidTvRemoteClient.KEY_MEDIA_PLAY_PAUSE, "Play/Pause") }
     }
 
     private fun updateAccessibilityState() {
@@ -241,9 +264,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun performEmergencyDisconnect() {
         stopScreenCapture()
+        tvClient.disconnect()
         MediaProjectionCaptureService.frameBuffer.clear()
         Toast.makeText(this, "Emergency Stop: Active capture and buffers cleared.", Toast.LENGTH_SHORT).show()
         finish()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        tvClient.disconnect()
     }
 
     private fun getAvailableH264Encoders(): List<String> {
